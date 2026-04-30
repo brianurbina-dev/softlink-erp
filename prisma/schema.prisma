@@ -1,0 +1,58 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ─── Schema público ───────────────────────────────────────────────────────────
+
+model Empresa {
+  id          String         @id @default(cuid())
+  rut         String         @unique
+  razonSocial String         @map("razon_social")
+  schemaName  String         @unique @map("schema_name")
+  plan        String         @default("starter")
+  activa      Boolean        @default(true)
+  creadaEn    DateTime       @default(now()) @map("creada_en")
+  usuarios    EmpresaUsuario[]
+  dteConfig   DteConfig?
+
+  @@map("empresas")
+}
+
+model Usuario {
+  id        String         @id @default(cuid())
+  email     String         @unique
+  nombre    String
+  rolGlobal String         @default("user") @map("rol_global")
+  creadoEn  DateTime       @default(now()) @map("creado_en")
+  empresas  EmpresaUsuario[]
+
+  @@map("usuarios")
+}
+
+model EmpresaUsuario {
+  id        String   @id @default(cuid())
+  empresaId String   @map("empresa_id")
+  usuarioId String   @map("usuario_id")
+  rol       String   @default("admin")
+  empresa   Empresa  @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  usuario   Usuario  @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+
+  @@unique([empresaId, usuarioId])
+  @@map("empresa_usuario")
+}
+
+model DteConfig {
+  id          String   @id @default(cuid())
+  empresaId   String   @unique @map("empresa_id")
+  proveedor   String   @default("simpleapi")
+  apiKey      String?  @map("api_key")
+  certificado String?
+  ambiente    String   @default("certificacion")
+  empresa     Empresa  @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+
+  @@map("dte_config")
+}

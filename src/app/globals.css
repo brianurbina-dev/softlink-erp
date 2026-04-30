@@ -1,0 +1,49 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --sl-purple: #7f77dd;
+  --sl-purple-light: #afa9ec;
+  --sl-purple-dark: #534ab7;
+
+  /* Light mode */
+  --background: #f4f4f8;
+  --foreground: #1a1a2e;
+  --sl-bg: #f4f4f8;
+  --sl-bg-card: #ffffff;
+  --sl-bg-sidebar: #1a1a2e;
+  --sl-border: #e2e2ee;
+  --sl-text: #1a1a2e;
+  --sl-muted: #6b6b88;
+}
+
+.dark {
+  --background: #0f0f14;
+  --foreground: #f0f0f5;
+  --sl-bg: #0f0f14;
+  --sl-bg-card: #16161f;
+  --sl-bg-sidebar: #0b0b11;
+  --sl-border: #2a2a3a;
+  --sl-text: #f0f0f5;
+  --sl-muted: #888899;
+}
+
+/* Semantic colors — same in both themes */
+:root {
+  --sl-success: #1d9e75;
+  --sl-warning: #ba7517;
+  --sl-danger: #e24b4a;
+}
+
+body {
+  color: var(--foreground);
+  background: var(--background);
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+}
