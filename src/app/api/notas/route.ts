@@ -26,7 +26,7 @@ export interface NotaRow {
   creado_en: string
 }
 
-export async function GET(_req: NextRequest) {
+export async function GET() {
   const ctx = await getEmpresaContext()
   if (!ctx) return NextResponse.json<ApiResponse>({ error: "No autenticado" }, { status: 401 })
 
