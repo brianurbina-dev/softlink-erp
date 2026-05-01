@@ -1,3 +1,6 @@
+-- CreateSchema
+CREATE SCHEMA IF NOT EXISTS "public";
+
 -- CreateTable
 CREATE TABLE "empresas" (
     "id" TEXT NOT NULL,
@@ -14,6 +17,7 @@ CREATE TABLE "empresas" (
 -- CreateTable
 CREATE TABLE "usuarios" (
     "id" TEXT NOT NULL,
+    "auth_user_id" TEXT NOT NULL,
     "email" TEXT NOT NULL,
     "nombre" TEXT NOT NULL,
     "rol_global" TEXT NOT NULL DEFAULT 'user',
@@ -39,6 +43,8 @@ CREATE TABLE "dte_config" (
     "proveedor" TEXT NOT NULL DEFAULT 'simpleapi',
     "api_key" TEXT,
     "certificado" TEXT,
+    "certificado_nombre" TEXT,
+    "certificado_password" TEXT,
     "ambiente" TEXT NOT NULL DEFAULT 'certificacion',
 
     CONSTRAINT "dte_config_pkey" PRIMARY KEY ("id")
@@ -49,6 +55,9 @@ CREATE UNIQUE INDEX "empresas_rut_key" ON "empresas"("rut");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "empresas_schema_name_key" ON "empresas"("schema_name");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "usuarios_auth_user_id_key" ON "usuarios"("auth_user_id");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "usuarios_email_key" ON "usuarios"("email");

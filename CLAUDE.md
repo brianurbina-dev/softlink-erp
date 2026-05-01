@@ -372,6 +372,15 @@ Actualizar ese archivo al cerrar cada módulo.
 
 ---
 
+## Reglas de flujo de trabajo con el usuario
+
+### Git — regla crítica
+**Nunca hacer `git commit` ni `git push` sin que el usuario lo solicite explícitamente.**
+Solo ejecutar comandos git de lectura (status, log, diff) de forma autónoma.
+Para commits y pushes, esperar instrucción directa del usuario.
+
+---
+
 ## Registro de ideas y mejoras pendientes
 
 Durante el desarrollo van a surgir ideas, mejoras o funcionalidades que no están en el PRD actual pero que vale la pena considerar después. **Nunca implementarlas de inmediato** — registrarlas en `docs/mejoras-pendientes.md` y seguir con el módulo en curso.
