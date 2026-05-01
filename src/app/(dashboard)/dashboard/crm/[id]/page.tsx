@@ -6,11 +6,11 @@ import Link from "next/link"
 import {
   ArrowLeft, Plus, X, Trash2, CheckCircle, AlertTriangle,
   Phone, Calendar, Mail, CheckSquare, FileText, Circle,
-  User, DollarSign, ChevronRight, Pencil,
+  User, DollarSign, Pencil,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import type { ApiResponse } from "@/types"
-import { ETAPAS_CRM, TIPOS_ACTIVIDAD } from "@/lib/validations/crm"
+import { TIPOS_ACTIVIDAD } from "@/lib/validations/crm"
 
 interface Oportunidad {
   id: string

@@ -1,0 +1,1292 @@
+
+Public
+ENVIRONMENT
+SimpleAPI
+LAYOUT
+Double Column
+LANGUAGE
+cURL - cURL
+Simple API
+Introduction
+SimpleAPI DTE
+Registro Compras y Ventas
+Boletas de Honorarios - Personas
+Boletas de Honorarios - Empresas
+Folios
+Mapas
+RUT
+Suscripción
+Simple API
+Simple API es una solución realizada en C# que consta de una completa biblioteca de clases que permiten realizar todas las operaciones necesarias para la generación, timbre, firma y envío de DTE al Servicio de Impuestos Internos.
+
+Cuenta además con otras 4 APIs que permiten realizar operaciones mediante scraping en el sitio del SII, como lo es la boleta de honorarios, gestión de folios CAF, mapas y el Registro de Compras y Ventas.
+
+Puede ser consumida desde cualquier lenguaje que soporte peticiones HTTP.
+
+No se conecta a servicios de terceros ni guarda información de terceros.
+
+Permite generar todos los documentos electrónicos disponibles en el SII y actuar en ambiente de certificación o de producción.
+
+Todos los endpoints requieren autenticación mediante una Api Key. Puede conseguir uno gratuitamente en www.simpleapi.cl
+
+Limites de uso (RateLimit)
+API SimpleAPI DTE
+
+Límite por segundo: Hasta 3 consultas.
+
+Límite por minuto: Hasta 40 consultas.
+
+APIs de RCV, Boletas de Honorarios, Folios y Mapas
+
+Límite por segundo: 1 consulta.
+
+Límite por minuto: 5 consultas.
+
+Limite por hora: 100 consultas.
+
+Instrucciones de Autenticación
+Todas las llamadas a SimpleAPI (DTE, RCV, Boleta de Honorarios, Folios y Mapas) requieren autenticación mediante una Api Key.
+
+Api Key: La autenticación se realiza a través de un encabezado en la solicitud HTTP. Debes incluir la Api Key en el encabezado con el formato especificado a continuación:
+
+Key: Authorization
+
+Value: ApiKey
+
+Bearer Token: Es un token que dura 24 horas y se puede obtener mediante endpoint en carpeta "Auth"-Obtener Bearer Token, con tu apikey.
+
+Ejemplo en Python
+A continuación, se muestra un ejemplo de cómo aplicar la autenticación en una solicitud utilizando Python y la librería requests:
+
+python
+Import requests
+url = 'https://api.simpleapi.cl/{endpoint}'
+headers = {
+    'Authorization': '1111-1111-1111-1111'
+}
+Notas adicionales
+
+Reemplaza 1111-1111-1111-1111 con tu Api Key real.
+
+Asegúrate de que el endpoint de la URL esté correctamente definido para la solicitud que deseas realizar.
+
+Importar Colección de Endpoints
+Ademas de visualizar la documentación, Postman ofrece la posiblidad de importar la colección de endpoints de nuestras API que tenemos a disposición. Esto permite a los usuarios tener acceso inmediato a todos los request disponibles sin tener que crearlas manualmente, ahorrando tiempo y esfuerzo al iniciar la integración con Simple API.
+
+En el siguiente tutorial te indicamos como comenzar tus pruebas, obtención de ApiKey, importación de endpoints y autenticación.
+
+
+
+AUTHORIZATION
+API Key
+Key
+Authorization
+
+Value
+apikey
+
+Envio de DTE
+AUTHORIZATION
+API Key
+This folder is using API Key from collectionSimple API
+POST
+Solicitud Reenvio Correo Validación
+https://api.simpleapi.cl/api/v1/consulta/correo
+Solicita al SII el reenvío de correo de validación para conocer el detalle del resultado de envío. Utiliza un TrackID.
+
+Descripción JSON
+Certificado
+Rut: Rut del certificado. Sin puntos con guión.
+Password: Password del certificado.
+RutEmpresa: RUT de la empresa emisora del DTE. Sin puntos con guión.
+TrackId: Número identificatorio que entrega el SII al momento de enviar un DTE.
+Ambiente: 0 para certificación. 1 para producción.
+AUTHORIZATION
+API Key
+This request is using API Key from collectionSimple API
+Body
+formdata
+input
+{ "Certificado": { "Password": "****", "Rut": "17096073-4" }, "RutEmpresa": "76269769-6", "TrackId": 172929228, "Ambiente": 0 }
+
+Json de entrada
+
+files
+Certificado digital en formato PFX
+
+Example Request
+Solicitud Exitosa
+View More
+curl
+curl --location 'https://api.simpleapi.cl/api/v1/consulta/correo' \
+--form 'input="{
+    \"Certificado\": 
+    {
+        \"Password\": \"******\",
+        \"Rut\": \"17096073-4\"
+    },
+    \"RutEmpresa\": \"76269769-6\",
+    \"TrackId\": 183060352,
+    \"Ambiente\": 0
+}"' \
+--form 'files=@"CertificadoTest.pfx"'
+200 OK
+Example Response
+Body
+Headers (5)
+json
+{
+  "estado": "0",
+  "glosa": "Requerimiento recibido OK",
+  "responseXml": null
+}
+POST
+Consultar Estado DTE
+https://api.simpleapi.cl/api/v1/consulta/dte
+Encargado de consultar estados de envios, devolviendo una respuesta detallada en un archivo XML.
+
+Descripción JSON
+Certificado
+Rut: Rut del certificado. Sin puntos con guión
+Password: Password del certificado.
+RutEmpresa: RUT de la empresa emisora del DTE. Sin puntos con guión.
+RutReceptor: RUT de la empresa que recibe el DTE. Sin puntos con guión.
+Folio: Folio del DTE a consultar.
+Total: Total del DTE a consultar.
+FechaDTE: (YYYY-MM-DD) Fecha del DTE a consultar.
+Tipo: Código del tipo del DTE.
+Ambiente: 0 para certificación. 1 para producción.
+ServidorBoletaREST: true o false. Indica si la consulta se hará en los servidores de boleta del SII.
+Posibles códigos de respuesta
+DOK: Documento recibido por el SII. Datos coinciden con los registrados.
+DNK: Documento recibido por el SII pero datos NO coinciden con los registrados.
+FAU: Documento NO recibido por el SII.
+FNA: Documento NO autorizado.
+FAN: Documento anulado.
+EMP: Empresa NO autorizada a emitir documentos tributarios electrónicos.
+TMD: Existe nota de débito que modifica texto documento.
+TMC: Existe nota de crédito que modifica texto documento.
+MMD: Existe nota de débito que modifica montos documento.
+MMC: Existe nota de crédito que modifica montos documento.
+AND: Existe nota de débito que anula documento.
+ANC: Existe nota de crédito que anula documento.
+AUTHORIZATION
+API Key
+This request is using API Key from collectionSimple API
+Body
+formdata
+input
+{ "Certificado": { "Password": "******", "Rut": "17096073-4" }, "RutEmpresa": "76269769-6", "RutReceptor": "76596827-5", "Folio": 1358, "Total": 29000, "FechaDTE": "2023-04-13", "Tipo":33, "Ambiente": 0, "ServidorBoletaREST":false }
+
+Json de entrada
+
+files
+Certificado digital en formato PFX
+
+Example Request
+DTE no recibido
+View More
+curl
+curl --location 'https://api.simpleapi.cl/api/v1/consulta/dte' \
+--form 'input="{
+    \"Certificado\": 
+    {
+        \"Password\": \"*******\",
+        \"Rut\": \"17096073-4\"
+    },
+    \"RutEmpresa\": \"76269769-6\",
+    \"RutReceptor\": \"76414319-1\",
+    \"Folio\": 96,
+    \"Total\": 1467074,
+    \"FechaDTE\": \"2021-06-29\",
+    \"Tipo\":33,
+    \"Ambiente\": 0,
+    \"ServidorBoletaREST\":false
+}"' \
+--form 'files=@"CertificadoTest.pfx"'
+200 OK
+Example Response
+Body
+Headers (5)
+View More
+json
+{
+  "responseXml": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\r\n<SII:RESPUESTA xmlns:SII=\"http://www.sii.cl/XMLSchema\">\r\n    <SII:RESP_HDR>\r\n        <ESTADO>FAN</ESTADO>\r\n        <GLOSA_ESTADO>DTE No Recibido</GLOSA_ESTADO>\r\n        <ERR_CODE>5</ERR_CODE>\r\n        <GLOSA_ERR>Documento Anulado</GLOSA_ERR>\r\n        <NUM_ATENCION/>\r\n    </SII:RESP_HDR>\r\n</SII:RESPUESTA>\r\n",
+  "estado": "FAN",
+  "ok": false,
+  "glosaEstado": "DTE No Recibido",
+  "erR_CODE": null,
+  "glosa_ERR_CODE": null,
+  "numeroAtencion": 0,
+  "fechaAtencion": "0001-01-01T00:00:00",
+  "codigo": null,
+  "descripcion": null
+}
+POST
+Acuse Recibo Mercaderias (XML)
+https://api.simpleapi.cl/api/v1/compras/acusorecibo
+Este endpoint está diseñado para generar XML de recibo de mercaderías asociadas a Documentos Tributarios Electrónicos (DTE). El envio de este XML, confirma la recepción física de los bienes o servicios descritos en los DTEs.
+
+El XML generado debe ser almacenado para su posterior envío vía correo electrónico al proveedor, utilizando la dirección registrada en la casilla de intercambio del SII.
+
+Descripción JSON
+Certificado:
+
+Rut: RUT del certificador, incluyendo dígito verificador.
+
+Password: Contraseña del certificador.
+
+Caratula:
+
+RutResponde: RUT del receptor (quien responde), incluyendo dígito verificador.
+
+RutRecibe: RUT del proveedor (quien envía los DTEs), incluyendo dígito verificador.
+
+NombreContacto: Nombre Persona de Contacto para aclarar dudas.
+
+Recibo:
+
+TipoDocumento: Tipo del DTE (por ejemplo, 33 para factura).
+
+Folio: Número de folio del DTE.
+
+FechaEmision: Fecha de emisión del DTE.
+
+MontoTotal: Monto total del DTE.
+
+Recinto: Nombre del recinto donde se recibieron las mercaderías
+
+AUTHORIZATION
+Basic Auth
+Username
+<username>
+
+Password
+<password>
+
+Body
+formdata
+input
+{ "Certificado":{ "Rut":"17096073-4", "Password":"******" }, "Caratula":{ "RutResponde":"17096073-4", "RutRecibe":"88888888-8", "IdRespuesta":"1", "NombreContacto":"Contacto", "FonoContacto":"+56xxxxxxx", "MailContacto":"contacto@test.cl" }, "Documentos":[ { "TipoDocumento":33, "Folio":4545, "FechaEmision":"2021-12-20", "MontoTotal":9899, "Recinto":"Recinto" } ] }
+
+files
+Example Request
+Exito
+View More
+curl
+curl --location 'https://api.simpleapi.cl/api/v1/compras/acusorecibo' \
+--form 'input="{
+   \"Certificado\":{
+      \"Rut\":\"17096073-4\",
+      \"Password\":\"******\"
+   },
+   \"Caratula\":{
+      \"RutResponde\":\"17096073-4\",
+      \"RutRecibe\":\"88888888-8\",
+      \"IdRespuesta\":\"1\",
+      \"NombreContacto\":\"Contacto\",
+      \"FonoContacto\":\"+56xxxxxxx\",
+      \"MailContacto\":\"contacto@test.cl\"
+   },
+   \"Resultados\":[
+      {
+         \"TipoDTE\":33,
+         \"Folio\":4545,
+         \"FechaEmision\":\"2021-12-20\",
+         \"MontoTotal\":9899,
+         \"CodigoEnvio\":\"111\",
+         \"EstadoDTE\":1,
+         \"CodigoRechazoODiscrepancia\":-1,
+         \"EstadoRecepcionEnvio\":0,
+         \"GlosaEstadoDTE\":\"Solo si aplica\"
+      }
+   ]
+}"' \
+--form 'files=@"CertificadoTest.pfx"'
+200 OK
+Example Response
+Body
+Headers (5)
+View More
+xml
+<?xml version="1.0" encoding="ISO-8859-1"?>
+<EnvioRecibos xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.sii.cl/SiiDte EnvioRecibos_v10.xsd" version="1.0" xmlns="http://www.sii.cl/SiiDte">
+    <SetRecibos ID="SET_RECIBIDOS_638170598477966615">
+        <Caratula version="1.0">
+            <RutResponde>17096073-4</RutResponde>
+            <RutRecibe>88888888-8</RutRecibe>
+            <NmbContacto>Contacto</NmbContacto>
+            <TmstFirmaEnv>2023-04-14T09:04:07</TmstFirmaEnv>
+        </Caratula>
+    </SetRecibos>
+    <Signature xmlns="http://www.w3.org/2000/09/xmldsig#">
+        <SignedInfo>
+            <CanonicalizationMethod Algorithm="http://www.w3.org/TR/2001/REC-xml-c14n-20010315" />
+            <SignatureMethod Algorithm="http://www.w3.org/2000/09/xmldsig#rsa-sha1" />
+            <Reference URI="#SET_RECIBIDOS_638170598477966615">
+                <Transforms>
+                    <Transform Algorithm="http://www.w3.org/TR/2001/REC-xml-c14n-20010315" />
+                </Transforms>
+                <DigestMethod Algorithm="http://www.w3.org/2000/09/xmldsig#sha1" />
+                <DigestValue>Liuix8fXGrO8NoRY8IPRAykxgAQ=</DigestValue>
+            </Reference>
+        </SignedInfo>
+        <SignatureValue>U860kdPpMOHCVdNFEbtBTN64m0f/mTiBDmoZAYb80CMEpRkbIOe2+7IHAIMmcTn3CQrBIXDp+oJkqc5dlU5WowCF2xJgnd/gAWfnOe+6AzuCRZHZTv4KAvkeBeYi6t9DhgSJgDCFLtLxS5A8A9gNeCD/xKxWOYkSK/KuwCFs73Y=</SignatureValue>
+        <KeyInfo>
+            <KeyValue>
+                <RSAKeyValue>
+                    <Modulus>y0amW86n91TdsdJeEE5AcMTYVmhTQrMwNVRgeRPNzNkWkv1e2MwTZg8A0gBJ8IcFwBagqnizMn19ICh96TCckR58Tdnaf0u7Xv4s56Bm4fU1U4MIcCeIECSt8kADWvac1yFbNTXYeLqI54LIavP+++R2ZY78EXtsqHvAKjTyACs=</Modulus>
+                    <Exponent>AQAB</Exponent>
+                </RSAKeyValue>
+            </KeyValue>
+            <X509Data>
+                <X509Certificate>MIIGOTCCBSGgAwIBAgIKL2s7lAAAABQ9gjANBgkqhkiG9w0BAQUFADCB0jELMAkGA1UEBhMC
+Q0wxHTAbBgNVBAgTFFJlZ2lvbiBNZXRyb3BvbGl0YW5hMREwDwYDVQQHEwhTYW50aWFnbzEU
+MBIGA1UEChMLRS1DRVJUQ0hJTEUxIDAeBgNVBAsTF0F1dG9yaWRhZCBDZXJ0aWZpY2Fkb3Jh
+MTAwLgYDVQQDEydFLUNFUlRDSElMRSBDQSBGSVJNQSBFTEVDVFJPTklDQSBTSU1QTEUxJzAl
+BgkqhkiG9w0BCQEWGHNjbGllbnRlc0BlLWNlcnRjaGlsZS5jbDAeFw0yMTAzMDMxNzI1MzBa
+Fw0yNDAzMDIxNzI1MzBaMIG6MQswCQYDVQQGEwJDTDEiMCAGA1UECBMZTUVUUk9QT0xJVEFO
+QSBERSBTQU5USUFHTzERMA8GA1UEBxMIU0FOVElBR08xFTATBgNVBAoTDENISUxFU1lTVEVN
+UzEKMAgGA1UECwwBKjEkMCIGA1UEAwwbR09OWkFMTyBCVVNUQU1BTlRFIEJBw5FBRE9TMSsw
+KQYJKoZIhvcNAQkBFhxHQlVTVEFNQU5URUBDSElMRVNZU1RFTVMuQ09NMIGfMA0GCSqGSIb3
+DQEBAQUAA4GNADCBiQKBgQDLRqZbzqf3VN2x0l4QTkBwxNhWaFNCszA1VGB5E83M2RaS/V7Y
+zBNmDwDSAEnwhwXAFqCqeLMyfX0gKH3pMJyRHnxN2dp/S7te/iznoGbh9TVTgwhwJ4gQJK3y
+QANa9pzXIVs1Ndh4uojngshq8/775HZljvwRe2yoe8AqNPIAKwIDAQABo4ICqTCCAqUwggFP
+BgNVHSAEggFGMIIBQjCCAT4GCCsGAQQBw1IFMIIBMDAtBggrBgEFBQcCARYhaHR0cDovL3d3
+dy5lLWNlcnRjaGlsZS5jbC9DUFMuaHRtMIH+BggrBgEFBQcCAjCB8R6B7gBFAGwAIAByAGUA
+cwBwAG8AbgBkAGUAcgAgAGUAcwB0AGUAIABmAG8AcgBtAHUAbABhAHIAaQBvACAAZQBzACAA
+dQBuACAAcgBlAHEAdQBpAHMAaQB0AG8AIABpAG4AZABpAHMAcABlAG4AcwBhAGIAbABlACAA
+cABhAHIAYQAgAGQAYQByACAAaQBuAGkAYwBpAG8AIABhAGwAIABwAHIAbwBjAGUAcwBvACAA
+ZABlACAAYwBlAHIAdABpAGYAaQBjAGEAYwBpAPMAbgAuACAAUABvAHMAdABlAHIAaQBvAHIA
+bQBlAG4AdABlACwwHQYDVR0OBBYEFICmk/JF+Aeig19IJWqLto/knOKcMAsGA1UdDwQEAwIE
+8DAjBgNVHREEHDAaoBgGCCsGAQQBwQEBoAwWCjE3MDk2MDczLTQwHwYDVR0jBBgwFoAUeOE+
+n9ISs3o8jc0wDlOzQykHs1UwPgYDVR0fBDcwNTAzoDGgL4YtaHR0cDovL2NybC5lLWNlcnRj
+aGlsZS5jbC9lY2VydGNoaWxlY2FGRVMuY3JsMDoGCCsGAQUFBwEBBC4wLDAqBggrBgEFBQcw
+AYYeaHR0cDovL29jc3AuZWNlcnRjaGlsZS5jbC9vY3NwMD0GCSsGAQQBgjcVBwQwMC4GJisG
+AQQBgjcVCILcgy+Fk4xmhdWdF4Li3CeB7+w8YYHLnhSGqIJYAgFkAgEEMCMGA1UdEgQcMBqg
+GAYIKwYBBAHBAQKgDBYKOTY5MjgxODAtNTANBgkqhkiG9w0BAQUFAAOCAQEAb3U2S3TMlRWM
+Fw2SWE/Q+r5Q6V7W7YRt3yhxFyaNJfyUS3jfswIaekZQ+4o0Yj9A9Knw98EPsvJ/dSvgb6o1
+EtyMGPQDfQEnuqYDs5nG7Cgmt1/sUP/6gJOROOffVZMn1Qgw3wK83428uulK/ih0NXDKOa/p
+ntSJl5upxjnfRINzghyq0kFtNnzpcSnKnaPhPIciNWyjha9peFeAD0946UZr+a9N0/v87JJV
+B1r+pMPwTL4y39a/h+V3s9T6O99ejRsyhPZa8GJIQ9BZzkQIkxO1tmtZHPsC6ge2BoUBTjKV
+kfZUnS3M7KIadaHesYRjFGx1o0v0ONYVt/29PmrwRg==</X509Certificate>
+            </X509Data>
+        </KeyInfo>
+    </Signature>
+</EnvioRecibos>
+POST
+Consultar Recepcion DTE
+https://api.simpleapi.cl/api/v1/consulta/recepcion
+El endpoint "Consultar Recepción DTE" está diseñado para que los usuarios emisores de Documentos Tributarios Electrónicos (DTE) puedan verificar el estado de recepción de sus documentos por parte de los receptores.
+
+Descripción JSON
+Certificado
+Rut: Rut del certificado. Sin puntos con guión.
+Password: Password del certificado.
+RutEmpresa: RUT de la empresa que emite el documento a consultar. Sin puntos con guión.
+RutReceptor: RUT de la empresa receptora del documento a consultar. Sin puntos con guión.
+Folio: Folio del DTE.
+TipoDTE: Indica si el documento es 33: Factura Electrónica 34: Factura No Afecta o Exenta Electrónica 39: Boleta Electrónica 41: Boleta No Afecta o Exenta Electrónica 46: Factura de Compra Electrónica. 52: Guía de Despacho Electrónica 56: Nota de Débito Electrónica 61: Nota de Crédito Electrónica 110: Factura de Exportación. 111: Nota de Débito de Exportación. 112: Nota de Crédito de Exportación
+Ambiente: 0: Ambiente de Certificación, 1: Ambiente de Producción.
+Descripción Campos Response
+isRecibido: Indica si el DTE ha sido recibido por el receptor. Un valor true significa que el documento ha sido recibido.
+
+isAceptado: Indica si el DTE ha sido aceptado por el receptor. Un valor true significa que el documento ha sido aceptado.
+
+isRechazado: Indica si el DTE ha sido rechazado por el receptor. Un valor true significa que el documento ha sido rechazado.
+
+fechaEvento: La fecha y hora en que ocurrió el último evento relacionado con el DTE, en formato ISO 8601.
+
+descripcion: Proporciona una descripción textual del estado actual del DTE. Por ejemplo, podria indicar que el documento no presenta eventos adicionales de reclamos o acuse de recibo.
+
+AUTHORIZATION
+API Key
+This request is using API Key from collectionSimple API
+Body
+formdata
+input
+{ "Certificado": { "Password": "*****", "Rut": "17096073-4" }, "RutEmpresa": "14684925-3", "RutReceptor": "76269769-6", "Folio": 60555, "Tipo":33, "Ambiente": 1 }
+
+Json de entrada
+
+files
+Certificado digital en formato PFX
+
+Example Request
+Sin Permiso
+View More
+curl
+curl --location 'https://api.simpleapi.cl/api/v1/consulta/recepcion' \
+--form 'input="{
+    \"Certificado\": 
+    {
+        \"Password\": \"*****\",
+        \"Rut\": \"17096073-4\"
+    },
+    \"RutEmpresa\": \"14684925-3\",
+    \"RutReceptor\": \"3671414-K\",
+    \"Folio\": 60557,
+    \"Tipo\":33,
+    \"Ambiente\": 1
+}"' \
+--form 'files=@"CertificadoTest.pfx"'
+200 OK
+Example Response
+Body
+Headers (5)
+json
+{
+  "isRecibido": true,
+  "descripcion": "Accion autorizada solo para empresa receptora, emisora o tenedora",
+  "fechaEvento": "0001-01-01T00:00:00"
+}
+POST
+Ventas por Mes
+https://servicios.simpleapi.cl/api/RCV/ventas/01/2026
+Generación de listado de Registros de Ventas por Mes.
+
+Consideraciones sobre el SII (Detalle Boletas Electrónicas)
+El SII solo permite generar un archivo de detalle de boletas por día y por contribuyente.
+
+Si solicitas boletas a las 08:00 y existen, por ejemplo, 20 boletas emitidas en el mes, el CSV contendrá esas 20.
+
+Si vuelves a solicitar el mismo detalle a las 12:00 del mismo día, el SII entregará exactamente el mismo archivo (20 registros), aunque se hayan emitido nuevas boletas después de la primera descarga.
+
+El archivo se regenera recién al día siguiente (o cuando se haga la primera solicitud de ese día).
+
+Descripción JSON de entrada
+RutCertificado: Rut del certificado digital. Sin puntos con guión.
+
+Password: Password del certificado.
+
+RutEmpresa: Rut de la empresa de la cual se solicitará el registro de ventas. Sin puntos con guión.
+
+Ambiente: 1 para producción. 0 para certificación.
+
+ProcesaBoletas: (boolean)(Opcional)(defecto: false)true: la API incluirá en la respuesta el detalle de boletas electrónicas (DTE 39 y 41). false (o ausente): la API se comporta como hasta ahora; solo procesa facturas, notas de crédito/débito.
+
+Parámetros de búsqueda:
+
+Los Parámetros de búsqueda, deben ser indicados en el endpoint, de la siguiente manera: URL_BASE/api/RCV/ventas/MM/AAAA
+
+Ejemplo:
+
+https://servicios.simpleapi.cl/api/RCV/ventas/12/2021
+
+Este endpoint solicitara al SII el listado de registros de ventas del mes Diciembre y año 2021.
+
+Normalmente demora entre 40 a 120 segundos.
+
+AUTHORIZATION
+API Key
+This request is using API Key from collectionSimple API
+Body
+formdata
+input
+{ "RutCertificado":"18076720-7", "RutEmpresa":"78181331-1", "Ambiente":0, "Password": "******" }
+
+Json de entrada
+
+files
+Certificado Digital en formato PFX
+
+Example Request
+Error SII
+curl
+curl --location 'https://servicios.simpleapi.cl/api/RCV/ventas/11/2024' \
+--data '{
+  "RutUsuario": "76269769-6",
+  "PasswordSII": "*******",
+  "RutEmpresa": "76269769-6",
+  "Ambiente": 0
+}'
+400 Bad Request
+Example Response
+Body
+Headers (5)
+json
+{
+  "mensaje": "El SII está presentando intermitencias. Favor reintentar. Código 865.164A"
+}
+Compras
+Permite obtener un listado completo de documentos de proveedores que emiten a un contribuyente y su estado.
+
+Campos:
+
+View More
+Campo	Tipo	Descripción	Valor por defecto / Nullability
+TipoDTE	int	Código del tipo de Documento Tributario Electrónico (ej: 33=Factura Electrónica).	
+TipoDTEString	string	Descripción legible del TipoDTE. Derivado de TipoDTE.	
+TipoCompra	string	Tipo de compra (ej: "Del Giro").	
+RutProveedor	string	RUT del proveedor del documento (ej: "99999999-9").	
+RazonSocial	string	Razón social del proveedor.	
+Folio	long	Número de folio del documento.	
+FechaEmision	DateTime	Fecha de emisión del documento. Formato: YYYY-MM-DDTHH:MM:SS.	
+FechaRecepcion	DateTime?	Fecha de recepción del documento.	Puede ser null si no se conoce.
+AcuseRecibo	string	Estado del acuse recibido:
+* Rechazado por el receptor
+* Recibo otorgado por el receptor
+* No reclamado en plazo
+* Pendiente de acuse
+No aplica	
+MontoExento	ulong	Monto exento del documento.	0
+MontoNeto	ulong	Monto neto afecto a IVA.	0
+MontoIvaRecuperable	ulong	IVA recuperable.	0
+MontoIvaNoRecuperable	long	IVA no recuperable.	0
+CodigoIvaNoRecuperable	long	Código IVA no recuperable.	0
+MontoTotal	ulong	Monto total del documento.	0
+MontoNetoActivoFijo	long	Monto neto activo fijo.	0
+IvaActivoFijo	long	IVA sobre activo fijo.	0
+IvaUsoComun	long	IVA uso común.	0
+ImpuestoSinDerechoCredito	long	Impuesto sin derecho a crédito fiscal.	0
+IvaNoRetenido	long	IVA no retenido.	0
+TabacosPuros	int	Impuestos tabacos puros.	0
+TabacosCigarrillos	int	Impuestos tabacos cigarrillos.	0
+TabacosElaborados	int	Impuestos tabacos elaborados.	0
+NceNdeFacturaCompra	int	NCE/NDE sobre factura de compra.	0
+ValorOtroImpuesto	string	Valor de otro impuesto no estandarizado.	Puede ser vacío o null
+TasaOtroImpuesto	string	Tasa de otro impuesto no estandarizado.	Puede ser vacío o null
+CodigoOtroImpuesto	int	Código de otro impuesto no estandarizado.	0
+Estado	string	Estado del documento:
+* Confirmada
+* Sin Incluir
+* Reclamado
+* Pendiente	"Confirmada"
+FechaAcuse	DateTime?	Fecha de acuse.	Puede ser null si no aplica.
+Si el documento trae más de un impuesto específico, se retornará dentro de un array:
+
+Campo	Tipo	Descripción	Valor por defecto / Nullability
+Valor	string	Monto del impuesto.	Puede ser vacío o null
+Tasa	string	Tasa aplicada.	Puede ser vacío o null
+Codigo	string	Código del Impuesto.	0
+AUTHORIZATION
+API Key
+This folder is using API Key from collectionSimple API
+POST
+Anular
+https://servicios.simpleapi.cl/api/bhe/anular/59/1
+Anulación de una Boleta de Honorarios.
+
+Descripción JSON de entrada
+RutCertificado: Rut del certificado digital. Sin puntos con guión.
+
+Password: Password del certificado.
+
+Parámetros de anulación:
+
+Los Parámetros de anulación, deben ser indicados en el endpoint, de la siguiente manera: URL_BASE/api/bhe/anular/{folio}/{motivo}
+
+folio: Número de boleta que desea anular.
+
+motivo: Indica la causa de la anulación. 1: No se efectúo el pago de los servicios por parte del receptor. 2: No se efectúo la prestación de los servicios. 3: Error en la digitación.
+
+Ejemplo:
+
+https://servicios.simpleapi.cl/api/bhe/anular/49/2
+
+Este endpoint solicitará al SII la anulación de la Boleta de Honorarios nº 49, a causa de que no se efectúo la prestación de los servicios.
+
+AUTHORIZATION
+API Key
+This request is using API Key from collectionSimple API
+Body
+formdata
+input
+{ "RutCertificado": "18076720-7", "Password": "****" }
+
+Json de entrada
+
+files
+Certificado Digital en formato PFX
+
+Example Request
+Anular
+curl
+curl --location 'https://servicios.simpleapi.cl/api/bhe/anular/59/1' \
+--form 'input="{
+  \"RutCertificado\": \"18076720-7\",
+  \"Password\": \"****\"
+}"' \
+--form 'files=@"/C:/Users/Alex/OneDrive/Desktop/Chilesystems/Certificado  Digital.pfx"'
+200 OK
+Example Response
+Body
+Headers (8)
+Boleta N° 59 anulada correctamente
+GET
+Obtener PDF Emitida por CodigoBarra
+https://servicios.simpleapi.cl/api/bhe/pdf/18076720000609D00953
+Obtener archivo PDF de Boleta de Honorarios emitida.
+
+Descripción JSON de entrada
+RutCertificado: Rut del certificado digital. Sin puntos con guión.
+
+Password: Password del certificado digital.
+
+Parámetros de búsqueda de boleta honorarios:
+
+Los Parámetros de búsqueda, deben ser indicados en el endpoint, de la siguiente manera: URL_BASE/api/bhe/{codigobarras}
+
+codigobarras: Corresponde al código de barras de la boleta. Es indistinto si es boleta emitida propia, de terceros, o recibida.
+Ejemplo:
+
+https://servicios.simpleapi.cl/api/bhe/pdf/170960730012498278B6
+
+Este endpoint solicitara al SII entregarnos la Boleta de Honorarios emitida nº 124, del año 2022, en archivo formato PDF.
+
+AUTHORIZATION
+API Key
+This request is using API Key from collectionSimple API
+Body
+formdata
+input
+{ "RutCertificado": "18076720-7", "Password": "***" }
+
+Json de entrada
+
+files
+Certificado Digital en formato PFX
+
+Example Request
+Obtener PDF Emitida por CodigoBarra
+curl
+curl --location --request GET 'https://servicios.simpleapi.cl/api/bhe/pdf/18076720000609D00953' \
+--form 'input="{
+  \"RutCertificado\": \"18076720-7\",
+  \"Password\": \"***\"
+}"' \
+--form 'files=@"/C:/Users/Alex/OneDrive/Desktop/Chilesystems/Certificado  Digital.pfx"'
+Example Response
+Body
+Headers (0)
+No response body
+This request doesn't return any response body
+GET
+Obtener PDF Recibida por Folio por Año
+https://servicios.simpleapi.cl/api/bhe/pdf/recibidas/89928/2026
+Obtener archivo PDF de Boleta de Honorarios recibida.
+
+Descripción JSON de entrada
+RutCertificado: Rut del certificado digital. Sin puntos con guión.
+
+Password: Password del certificado digital.
+
+Rut Emisor: Rut del emisor de la boleta de honorarios.
+
+Parámetros de búsqueda de boleta honorarios:
+
+Los Parámetros de búsqueda, deben ser indicados en el endpoint, de la siguiente manera: URL_BASE/api/bhe/recibidas/{folio}/{año}
+
+folio: Número de boleta de la que desea obtener archivo PDF.
+
+año: Indica el año al que corresponde el folio seleccionado. (AAAA).
+
+Ejemplo:
+
+https://servicios.simpleapi.cl/api/bhe/pdf/recibidas/292862/2022
+
+Este endpoint solicitara al SII entregarnos la Boleta de Honorarios recibida nº 292862, del año 2022, en archivo formato PDF.
+
+AUTHORIZATION
+API Key
+This request is using API Key from collectionSimple API
+Body
+formdata
+input
+{ "RutCertificado": "18076720-7", "Password": "****", "RutEmisor": "9403507-4", }
+
+Json de entrada
+
+files
+Certificado Digital en formato PFX
+
+Example Request
+Obtener PDF Recibida por Folio por Año
+curl
+curl --location --request GET 'https://servicios.simpleapi.cl/api/bhe/pdf/recibidas/89928/2026' \
+--form 'input="{
+  \"RutCertificado\": \"18076720-7\",
+  \"Password\": \"****\",
+  \"RutEmisor\": \"9403507-4\",
+}"' \
+--form 'files=@"/C:/Users/Alex/OneDrive/Desktop/Chilesystems/Certificado  Digital.pfx"'
+Example Response
+Body
+Headers (0)
+No response body
+This request doesn't return any response body
+POST
+Informe Anual Emitidas
+https://servicios.simpleapi.cl/api/bhe/listado/emitidas/2022
+Obtener Informe anual de Boleta de Honorarios emitidas.
+
+Descripción JSON de entrada
+RutCertificado: Rut del certificado digital. Sin puntos con guión.
+
+Password: Password del certificado.
+
+Parámetros de búsqueda de informe de boleta honorarios:
+
+Los Parámetros de búsqueda, deben ser indicados en el endpoint, de la siguiente manera: URL_BASE/api/bhe/listado/emitidas/{año}
+
+año: Indica el año del cual se solicitará el informe. (AAAA).
+Ejemplo:
+
+https://servicios.simpleapi.cl/api/bhe/listado/emitidas/2022
+
+Este endpoint solicitara al SII entregarnos un informe anual de boletas de honorarios emitidas del año 2022.
+
+Informe en formato Json.
+
+AUTHORIZATION
+API Key
+This request is using API Key from collectionSimple API
+Body
+formdata
+input
+{ "RutCertificado": "18076720-7", "Password": "*****" }
+
+Json de entrada
+
+files
+Certificado Digital en formato PFX
+
+Example Request
+Informe Anual Emitidas
+curl
+curl --location 'https://servicios.simpleapi.cl/api/bhe/listado/emitidas/2022' \
+--form 'input="{
+  \"RutCertificado\": \"18076720-7\",
+  \"Password\": \"******\"
+}"' \
+--form 'files=@"/C:/Users/Alex/OneDrive/Desktop/Chilesystems/Certificado  Digital.pfx"'
+200 OK
+Example Response
+Body
+Headers (8)
+View More
+{
+  "anio": 2022,
+  "rut": "18076720-7",
+  "periodos": [
+    {
+      "mes": "ENERO",
+      "cantidadVigentes": 0,
+      "cantidadAnuladas": 0,
+      "honorarioBruto": 0,
+      "retencionTerceros": 0,
+      "retencionContribuyente": 0,
+      "totalLiquido": 0
+    },
+    {
+      "mes": "FEBRERO",
+      "cantidadVigentes": 0,
+      "cantidadAnuladas": 0,
+      "honorarioBruto": 0,
+      "retencionTerceros": 0,
+      "retencionContribuyente": 0,
+      "totalLiquido": 0
+    },
+    {
+      "mes": "MARZO",
+      "cantidadVigentes": 0,
+      "cantidadAnuladas": 0,
+      "honorarioBruto": 0,
+      "retencionTerceros": 0,
+      "retencionContribuyente": 0,
+      "totalLiquido": 0
+    },
+    {
+      "mes": "ABRIL",
+      "cantidadVigentes": 0,
+      "cantidadAnuladas": 0,
+      "honorarioBruto": 0,
+      "retencionTerceros": 0,
+      "retencionContribuyente": 0,
+      "totalLiquido": 0
+    },
+    {
+      "mes": "MAYO",
+      "cantidadVigentes": 0,
+      "cantidadAnuladas": 0,
+      "honorarioBruto": 0,
+      "retencionTerceros": 0,
+      "retencionContribuyente": 0,
+      "totalLiquido": 0
+    },
+    {
+      "mes": "JUNIO",
+      "cantidadVigentes": 0,
+      "cantidadAnuladas": 0,
+      "honorarioBruto": 0,
+      "retencionTerceros": 0,
+      "retencionContribuyente": 0,
+      "totalLiquido": 0
+    },
+    {
+      "mes": "JULIO",
+      "cantidadVigentes": 0,
+      "cantidadAnuladas": 0,
+      "honorarioBruto": 0,
+      "retencionTerceros": 0,
+      "retencionContribuyente": 0,
+      "totalLiquido": 0
+    },
+    {
+      "mes": "AGOSTO",
+      "cantidadVigentes": 0,
+      "cantidadAnuladas": 0,
+      "honorarioBruto": 0,
+      "retencionTerceros": 0,
+      "retencionContribuyente": 0,
+      "totalLiquido": 0
+    },
+    {
+      "mes": "SEPTIEMBRE",
+      "cantidadVigentes": 0,
+      "cantidadAnuladas": 0,
+      "honorarioBruto": 0,
+      "retencionTerceros": 0,
+      "retencionContribuyente": 0,
+      "totalLiquido": 0
+    },
+    {
+      "mes": "OCTUBRE",
+      "cantidadVigentes": 0,
+      "cantidadAnuladas": 0,
+      "honorarioBruto": 0,
+      "retencionTerceros": 0,
+      "retencionContribuyente": 0,
+      "totalLiquido": 0
+    },
+    {
+      "mes": "NOVIEMBRE",
+      "folioInicial": 1,
+      "folioFinal": 1,
+      "cantidadVigentes": 1,
+      "cantidadAnuladas": 0,
+      "honorarioBruto": 1500,
+      "retencionTerceros": 184,
+      "retencionContribuyente": 0,
+      "totalLiquido": 1316
+    },
+    {
+      "mes": "DICIEMBRE",
+      "cantidadVigentes": 0,
+      "cantidadAnuladas": 0,
+      "honorarioBruto": 0,
+      "retencionTerceros": 0,
+      "retencionContribuyente": 0,
+      "totalLiquido": 0
+    }
+  ],
+  "totalVigentes": 1,
+  "totalAnuladas": 0,
+  "totalHonorarioBruto": 1500,
+  "totalRetencionTerceros": 184,
+  "totalRetencionContribuyente": 0,
+  "totalRetencionLiquido": 1316
+}
+POST
+Informe Anual Recibidas
+https://servicios.simpleapi.cl/api/bhe/listado/recibidas/2022
+Obtener Informe anual de Boleta de Honorarios Recibidas.
+
+Descripción JSON de entrada
+RutCertificado: Rut del certificado digital. Sin puntos con guión.
+
+Password: Password del certificado.
+
+Parámetros de búsqueda de informe de boleta honorarios:
+
+Los Parámetros de búsqueda, deben ser indicados en el endpoint, de la siguiente manera: URL_BASE/api/bhe/listado/recibidas/{año}
+
+año: Indica el año del cual se solicitará el informe. (AAAA).
+Ejemplo:
+
+https://servicios.simpleapi.cl/api/bhe/listado/recibidas/2022
+
+Este endpoint solicitara al SII entregarnos un informe anual de boletas de honorarios recibidas del año 2022.
+
+Informe en formato Json.
+
+AUTHORIZATION
+API Key
+This request is using API Key from collectionSimple API
+Body
+formdata
+input
+{ "RutCertificado": "18076720-7", "Password": "*****" }
+
+Json de entrada
+
+files
+Certificado Digital en formato PFX
+
+Example Request
+Informe Anual Recibidas
+curl
+curl --location 'https://servicios.simpleapi.cl/api/bhe/listado/recibidas/2022' \
+--form 'input="{
+  \"RutCertificado\": \"18076720-7\",
+  \"Password\": \"*****\"
+}"' \
+--form 'files=@"/C:/Users/Alex/OneDrive/Desktop/Chilesystems/Certificado  Digital.pfx"'
+200 OK
+Example Response
+Body
+Headers (8)
+View More
+{
+  "anio": 2022,
+  "rut": "18076720-7",
+  "periodos": [
+    {
+      "mes": "ENERO",
+      "cantidadVigentes": 0,
+      "cantidadAnuladas": 0,
+      "honorarioBruto": 0,
+      "retencionTerceros": 0,
+      "retencionContribuyente": 0,
+      "totalLiquido": 0
+    },
+    {
+      "mes": "FEBRERO",
+      "cantidadVigentes": 0,
+      "cantidadAnuladas": 0,
+      "honorarioBruto": 0,
+      "retencionTerceros": 0,
+      "retencionContribuyente": 0,
+      "totalLiquido": 0
+    },
+    {
+      "mes": "MARZO",
+      "cantidadVigentes": 0,
+      "cantidadAnuladas": 0,
+      "honorarioBruto": 0,
+      "retencionTerceros": 0,
+      "retencionContribuyente": 0,
+      "totalLiquido": 0
+    },
+    {
+      "mes": "ABRIL",
+      "cantidadVigentes": 0,
+      "cantidadAnuladas": 0,
+      "honorarioBruto": 0,
+      "retencionTerceros": 0,
+      "retencionContribuyente": 0,
+      "totalLiquido": 0
+    },
+    {
+      "mes": "MAYO",
+      "cantidadVigentes": 0,
+      "cantidadAnuladas": 0,
+      "honorarioBruto": 0,
+      "retencionTerceros": 0,
+      "retencionContribuyente": 0,
+      "totalLiquido": 0
+    },
+    {
+      "mes": "JUNIO",
+      "cantidadVigentes": 0,
+      "cantidadAnuladas": 0,
+      "honorarioBruto": 0,
+      "retencionTerceros": 0,
+      "retencionContribuyente": 0,
+      "totalLiquido": 0
+    },
+    {
+      "mes": "JULIO",
+      "cantidadVigentes": 0,
+      "cantidadAnuladas": 0,
+      "honorarioBruto": 0,
+      "retencionTerceros": 0,
+      "retencionContribuyente": 0,
+      "totalLiquido": 0
+    },
+    {
+      "mes": "AGOSTO",
+      "cantidadVigentes": 0,
+      "cantidadAnuladas": 0,
+      "honorarioBruto": 0,
+      "retencionTerceros": 0,
+      "retencionContribuyente": 0,
+      "totalLiquido": 0
+    },
+    {
+      "mes": "SEPTIEMBRE",
+      "cantidadVigentes": 0,
+      "cantidadAnuladas": 0,
+      "honorarioBruto": 0,
+      "retencionTerceros": 0,
+      "retencionContribuyente": 0,
+      "totalLiquido": 0
+    },
+    {
+      "mes": "OCTUBRE",
+      "cantidadVigentes": 0,
+      "cantidadAnuladas": 0,
+      "honorarioBruto": 0,
+      "retencionTerceros": 0,
+      "retencionContribuyente": 0,
+      "totalLiquido": 0
+    },
+    {
+      "mes": "NOVIEMBRE",
+      "cantidadVigentes": 0,
+      "cantidadAnuladas": 0,
+      "honorarioBruto": 0,
+      "retencionTerceros": 0,
+      "retencionContribuyente": 0,
+      "totalLiquido": 0
+    },
+    {
+      "mes": "DICIEMBRE",
+      "cantidadVigentes": 0,
+      "cantidadAnuladas": 0,
+      "honorarioBruto": 0,
+      "retencionTerceros": 0,
+      "retencionContribuyente": 0,
+      "totalLiquido": 0
+    }
+  ],
+  "totalVigentes": 0,
+  "totalAnuladas": 0,
+  "totalHonorarioBruto": 0,
+  "totalRetencionTerceros": 0,
+  "totalRetencionContribuyente": 0,
+  "totalRetencionLiquido": 0
+}
+POST
+Informe Mensual Emitidas
+https://servicios.simpleapi.cl/api/bhe/listado/emitidas/02/2022
+Obtener Informe mensual de Boleta de Honorarios emitidas.
+
+Descripción JSON de entrada
+RutCertificado: Rut del certificado digital. Sin puntos con guión.
+
+Password: Password del certificado.
+
+Parámetros de búsqueda de informe de boleta honorarios:
+
+Los Parámetros de búsqueda, deben ser indicados en el endpoint, de la siguiente manera: URL_BASE/api/bhe/listado/emitidas/{mes}/{año}
+
+mes: Indica el mes del cual se solicitará el informe (MM).
+
+año: Indica el año del cual se solicitará el informe. (AAAA).
+
+Ejemplo:
+
+https://servicios.simpleapi.cl/api/bhe/listado/emitidas/04/2022
+
+Este endpoint solicitara al SII entregarnos un informe mensual de boletas de honorarios emitidas del mes Abril, año 2022.
+
+Informe en formato Json.
+
+AUTHORIZATION
+API Key
+This request is using API Key from collectionSimple API
+Body
+formdata
+input
+{ "RutCertificado": "18076720-7", "Password": "****" }
+
+Json de entrada
+
+files
+Certificado Digital en formato PFX
+
+Example Request
+Informe Mensual Emitidas
+curl
+curl --location 'https://servicios.simpleapi.cl/api/bhe/listado/emitidas/02/2022' \
+--form 'input="{
+  \"RutCertificado\": \"18076720-7\",
+  \"Password\": \"****\"
+
+}"' \
+--form 'files=@"/C:/Users/Alex/OneDrive/Desktop/Chilesystems/Certificado  Digital.pfx"'
+200 OK
+Example Response
+Body
+Headers (8)
+View More
+{
+  "dia": 0,
+  "mes": 2,
+  "anio": 2022,
+  "rut": "18076720-7",
+  "cantidadDocumentos": 0,
+  "totalBruto": 0,
+  "totalRetenido": 0,
+  "totalPagado": 0,
+  "totalRetencionEmisor": 0,
+  "totalRetencionReceptor": 0,
+  "totalLiquido": 0,
+  "boletas": []
+}
+POST
+Informe Mensual Recibidas
+https://servicios.simpleapi.cl/api/bhe/listado/recibidas/01/2026
+Obtener Informe mensual de Boleta de Honorarios Recibidas.
+
+Descripción JSON de entrada
+RutCertificado: Rut del certificado digital. Sin puntos con guión.
+
+Password: Password del certificado.
+
+Parámetros de búsqueda de informe de boleta honorarios:
+
+Los Parámetros de búsqueda, deben ser indicados en el endpoint, de la siguiente manera: URL_BASE/api/bhe/listado/recibidas/{mes}/{año}
+
+mes: Indica el mes del cual se solicitará el informe. (MM).
+
+año: Indica el año del cual se solicitará el informe. (AAAA).
+
+Ejemplo:
+
+https://servicios.simpleapi.cl/api/bhe/listado/recibidas/04/2022
+
+Este endpoint solicitara al SII entregarnos un informe mensual de boletas de honorarios recibidas del mes Abril, año 2022.
+
+Informe en formato Json.
+
+AUTHORIZATION
+API Key
+This request is using API Key from collectionSimple API
+Body
+formdata
+input
+{ "RutCertificado": "18076720-7", "Password": "******" }
+
+Json de entrada
+
+files
+Certificado Digital en formato PFX
+
+Example Request
+Informe Mensual Recibidas
+curl
+curl --location 'https://servicios.simpleapi.cl/api/bhe/listado/recibidas/01/2026' \
+--form 'input="{
+  \"RutCertificado\": \"18076720-7\",
+  \"Password\": \"******\"
+}"' \
+--form 'files=@"/C:/Users/Alex/OneDrive/Desktop/Chilesystems/Certificado  Digital.pfx"'
+200 OK
+Example Response
+Body
+Headers (8)
+View More
+{
+  "dia": 0,
+  "mes": 1,
+  "anio": 2026,
+  "rut": "18076720-7",
+  "cantidadDocumentos": 1,
+  "totalBruto": 8000,
+  "totalRetenido": 0,
+  "totalPagado": 8000,
+  "totalRetencionEmisor": 0,
+  "totalRetencionReceptor": 0,
+  "totalLiquido": 0,
+  "boletas": [
+    {
+      "encabezado": {
+        "numero": 89928,
+        "estado": "VIG",
+        "fechaBoleta": "2026-01-08T00:00:00"
+      },
+      "emisor": {
+        "razonSocial": "ANDRES VEGA ALVARADO ",
+        "sociedadProfesional": false,
+        "rut": "9403507-4"
+      },
+      "receptor": {
+        "rut": "18076720-7"
+      },
+      "honorarios": {
+        "brutos": 8000,
+        "retencionEmisor": 0,
+        "retencionReceptor": 0,
+        "liquido": 0,
+        "retenido": 0,
+        "pagado": 8000
+      },
+      "codigoBarra": "09403507899284AE5384",
+      "tipoBoleta": 1
+    }
+  ]
+}
+POST
+Informe Diario Recibidas
+https://servicios.simpleapi.cl/api/bhe/listado/recibidas/01/04/2023
+Obtener Informe diario de Boleta de Honorarios Recibidas.
+
+Descripción JSON de entrada
+RutCertificado: Rut del certificado digital. Sin puntos con guión.
+
+Password: Password del certificado.
+
+Detallado: Trae el RUT del emisor. Obtiene la información desde el cuadro mensual y la filtra. Entre más cercana la fecha a un fin de mes, más demorará la consulta. Caso contrario, es más rápida la consulta pero no trae RUT de emisor.
+
+Parámetros de búsqueda de informe de boleta honorarios:
+
+Los Parámetros de búsqueda, deben ser indicados en el endpoint, de la siguiente manera: URL_BASE/api/bhe/listado/recibidas/{dia}/{mes}/{año}
+
+dia: Indica el día del cual se solicitará el informe.
+
+mes: Indica el mes del cual se solicitará el informe. (MM).
+
+año: Indica el año del cual se solicitará el informe. (AAAA).
+
+Ejemplo:
+
+https://servicios.simpleapi.cl/api/bhe/listado/recibidas/01/04/2023
+
+Este endpoint solicitara al SII entregarnos un informe diario de boletas de honorarios recibidas el día 01 de Abril, año 2023.
+
+Informe en formato Json.
+
+AUTHORIZATION
+API Key
+This request is using API Key from collectionSimple API
+Body
+formdata
+input
+{ "RutCertificado": "18076720-7", "Password": "*****", "Detallado": false }
+
+Json de entrada
+
+files
+Certificado Digital en formato PFX
+
+Example Request
+Informe Diario Recibidas
+curl
+curl --location 'https://servicios.simpleapi.cl/api/bhe/listado/recibidas/01/04/2023' \
+--form 'input="{
+   \"RutCertificado\": \"18076720-7\",
+   \"Password\": \"*****\",
+   \"Detallado\": false
+}"' \
+--form 'files=@"/C:/Users/Alex/OneDrive/Desktop/Chilesystems/Certificado  Digital.pfx"'
+200 OK
+Example Response
+Body
+Headers (8)
+View More
+{
+  "dia": 1,
+  "mes": 4,
+  "anio": 2023,
+  "rut": "18076720-7",
+  "cantidadDocumentos": 0,
+  "totalBruto": 0,
+  "totalRetenido": 0,
+  "totalPagado": 0,
+  "totalRetencionEmisor": 0,
+  "totalRetencionReceptor": 0,
+  "totalLiquido": 0,
+  "boletas": []
+}

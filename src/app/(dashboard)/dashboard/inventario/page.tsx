@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect, useCallback, useRef } from "react"
-import { Search, AlertTriangle, Package, ArrowUpRight, ArrowDownLeft, Settings2, CheckCircle } from "lucide-react"
+import { Search, AlertTriangle, Package, ArrowUpRight, Settings2, CheckCircle } from "lucide-react"
 import { cn } from "@/lib/utils"
 import Link from "next/link"
 

@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect, useCallback } from "react"
-import { TrendingUp, TrendingDown, Minus, FileText } from "lucide-react"
+import { TrendingUp, TrendingDown, Minus } from "lucide-react"
 import { BarChart } from "@/components/erp/BarChart"
 import { cn } from "@/lib/utils"
 import type { ReporteVentasData } from "@/app/api/reportes/ventas/route"

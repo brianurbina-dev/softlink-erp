@@ -13,7 +13,24 @@
       "Bash(npx tsc *)",
       "Bash(npm run *)",
       "Bash(git init *)",
-      "Bash(git add *)"
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)",
+      "Bash(git remote *)",
+      "Bash(git branch *)",
+      "Bash(git push *)",
+      "Bash(node -e ' *)",
+      "Bash(ssh-keygen *)",
+      "Bash(ssh -T git@github.com)",
+      "Bash(git commit -m 'docs: cerrar Módulo 1.1 en avance.md *)",
+      "Bash(node -e \"console.log\\(require\\('./node_modules/zod/package.json'\\).version\\)\")",
+      "Bash(Get-ChildItem -Path \"C:\\\\Users\\\\Brian\\\\Documents\\\\ProyectosClaude_Kimi2.5\\\\SoftlinkERP\" -Directory)",
+      "Bash(Select-Object Name)",
+      "Bash(mkdir -p \"C:\\\\Users\\\\Brian\\\\Documents\\\\ProyectosClaude_Kimi2.5\\\\SoftlinkERP\\\\src\\\\app\\\\api\\\\contabilidad\\\\asientos\\\\[id]\")",
+      "Bash(mkdir -p \"C:\\\\Users\\\\Brian\\\\Documents\\\\ProyectosClaude_Kimi2.5\\\\SoftlinkERP\\\\src\\\\app\\\\api\\\\contabilidad\\\\reglas\\\\[id]\")",
+      "Bash(vercel *)",
+      "Bash(npx vercel *)",
+      "Bash(npx next *)",
+      "Bash(grep -E \"\\(\\\\.tsx|\\\\.ts\\)$|Error:\")"
     ]
   }
 }

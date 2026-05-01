@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { AlertTriangle, Package } from "lucide-react"
+import { Package } from "lucide-react"
 import { cn } from "@/lib/utils"
 import type { ReporteInventarioData } from "@/app/api/reportes/inventario/route"
 

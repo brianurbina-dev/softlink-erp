@@ -310,7 +310,6 @@ export default function PlanCuentasPage() {
     }
   }
 
-  const padreOptions = cuentas.filter((c) => !c.acepta_movimientos || c.id === editId ? false : false)
   const todosParaPadre = cuentas
 
   const conteoActivas = cuentas.filter((c) => c.activo).length

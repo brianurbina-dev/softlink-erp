@@ -113,7 +113,7 @@ export default function NotasPage() {
   const [showModal, setShowModal] = useState(false)
   const [tipoNota, setTipoNota] = useState<56 | 61>(61)
   const [facturasEmitidas, setFacturasEmitidas] = useState<FacturaEmitida[]>([])
-  const [clientes, setClientes] = useState<Cliente[]>([])
+  const [, setClientes] = useState<Cliente[]>([])
   const [refFacturaId, setRefFacturaId] = useState("")
   const [clienteId, setClienteId] = useState("")
   const [fecha, setFecha] = useState(() => new Date().toISOString().split("T")[0])

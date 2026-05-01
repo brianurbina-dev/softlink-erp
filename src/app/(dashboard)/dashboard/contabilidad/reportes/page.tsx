@@ -125,17 +125,6 @@ export default function ReportesContabilidadPage() {
 
   // Agrupar balance por tipo
   const tiposBalance = ["activo", "pasivo", "patrimonio"]
-  const totalesBalance = tiposBalance.reduce<Record<string, number>>((acc, tipo) => {
-    acc[tipo] = balanceCuentas
-      .filter((c) => c.tipo === tipo && !c.cuenta_padre_id)
-      .reduce((s, c) => {
-        const subtotal = balanceCuentas
-          .filter((h) => h.tipo === tipo)
-          .reduce((ss, h) => ss + (h.cuenta_padre_id ? 0 : 0), 0)
-        return s + c.saldo
-      }, 0)
-    return acc
-  }, {})
 
   // Totales reales agrupando por tipo (solo cuentas hoja con saldo != 0)
   const totalPorTipo = (tipo: string) =>
