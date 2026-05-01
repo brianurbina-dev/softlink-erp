@@ -13,7 +13,7 @@ Claude Code lo lee para saber qué está hecho y qué viene.
 | Fase 2 — DTE | 2.1 ✅, 2.2 ✅, 2.3 ✅, 2.4 ✅, 2.5 ✅ | ✅ Completa |
 | Fase 3 — Inventario | 3.1 ✅, 3.2 ✅, 3.3 ✅ | ✅ Completa |
 | Fase 4 — Compras | 4.1 ✅, 4.2 ✅ | ✅ Completa |
-| Fase 5 — CRM | 5.1 ✅, 5.2 ⏸, 5.3 ⏸ | ✅ 5.1 cerrado (5.2 y 5.3 → mejoras-pendientes) |
+| Fase 5 — CRM | 5.1 ✅, 5.2 ✅, 5.3 ✅ | ✅ Completa |
 | Fase 6 — Reportes | 6.1 ✅, 6.2 ✅, 6.3 ✅ | ✅ Completa |
 | Fase 7 — Contabilidad | 7.1 ✅, 7.2 ✅, 7.3 ✅, 7.4 ✅ | ✅ Completa |
 
@@ -207,7 +207,26 @@ Claude Code lo lee para saber qué está hecho y qué viene.
   - Botones ← → por card para mover entre etapas sin abrir modal
   - KPIs: oportunidades activas, valor total pipeline, cantidad ganadas, valor ganado
   - Modal crear/editar: título, cliente (opcional), etapa, valor estimado, fecha cierre, descripción
-  - 5.2 (actividades) y 5.3 (métricas CRM) pospuestos a mejoras-pendientes.md
+- Próximo módulo: 5.2 y 5.3
+
+## Módulo 5.2 — Actividades por oportunidad
+- Estado: ✅ CERRADO
+- Fecha cierre: 02/05/2026
+- Notas:
+  - Tabla `crm_actividades` en schema de empresa (tipo, descripcion, fecha, completada)
+  - Migración SQL `20260501000000_add_crm_actividades` para schemas existentes (aplicar en Supabase)
+  - API: `GET/POST /api/crm/oportunidades/[id]/actividades`, `PATCH/DELETE /api/crm/actividades/[id]`
+  - Tipos: llamada, reunion, email, tarea, nota
+  - Página `/dashboard/crm/[id]` — detalle de oportunidad con timeline de actividades, formulario inline, toggle completada
+  - Kanban cards ahora linkean al detalle (título + botón ExternalLink)
+
+## Módulo 5.3 — Métricas del pipeline CRM
+- Estado: ✅ CERRADO
+- Fecha cierre: 02/05/2026
+- Notas:
+  - API `GET /api/crm/metricas` — recuento y valor por etapa, tasa de conversión, valor promedio, oportunidades vencidas
+  - Página `/dashboard/crm/metricas` — 4 KPIs (conversión, ganadas, valor promedio, vencidas), embudo visual por etapa, tabla resumen
+  - Sidebar: "Métricas CRM" agregado bajo Operaciones
 - Próximo módulo: Fase 6 Reportes
 
 ## Módulo 6.1 — Reporte de ventas

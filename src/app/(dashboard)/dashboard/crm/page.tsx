@@ -3,8 +3,9 @@
 import { useState, useEffect, useCallback } from "react"
 import {
   Plus, X, AlertTriangle, CheckCircle, ChevronLeft, ChevronRight,
-  Pencil, Trash2, Calendar, DollarSign, User,
+  Pencil, Trash2, Calendar, DollarSign, User, ExternalLink,
 } from "lucide-react"
+import Link from "next/link"
 import { cn } from "@/lib/utils"
 import type { ApiResponse } from "@/types"
 
@@ -258,7 +259,12 @@ export default function CRMPage() {
                             vencida ? "border-sl-danger/30" : "border-sl-border"
                           )}
                         >
-                          <p className="mb-1 text-sm font-medium leading-snug text-sl-text">{o.titulo}</p>
+                          <Link
+                            href={`/dashboard/crm/${o.id}`}
+                            className="mb-1 block text-sm font-medium leading-snug text-sl-text hover:text-sl-purple-light"
+                          >
+                            {o.titulo}
+                          </Link>
 
                           {o.cliente_razon_social && (
                             <div className="mb-1.5 flex items-center gap-1 text-xs text-sl-muted">
@@ -304,6 +310,13 @@ export default function CRMPage() {
                               </button>
                             </div>
                             <div className="flex items-center gap-0.5">
+                              <Link
+                                href={`/dashboard/crm/${o.id}`}
+                                title="Ver detalle"
+                                className="rounded p-1 text-sl-muted transition-colors hover:bg-sl-purple/[0.15] hover:text-sl-purple-light"
+                              >
+                                <ExternalLink className="h-3.5 w-3.5" />
+                              </Link>
                               <button
                                 onClick={() => openEdit(o)}
                                 className="rounded p-1 text-sl-muted transition-colors hover:bg-sl-purple/[0.15] hover:text-sl-purple-light"

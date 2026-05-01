@@ -77,6 +77,7 @@ const navSections: NavSection[] = [
       { label: "Movimientos", href: "/dashboard/inventario/movimientos", icon: Activity },
       { label: "Compras", href: "/dashboard/compras", icon: ShoppingCart },
       { label: "CRM", href: "/dashboard/crm", icon: Users },
+      { label: "Métricas CRM", href: "/dashboard/crm/metricas", icon: BarChart2 },
     ],
   },
   {
