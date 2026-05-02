@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db/prisma"
 import { cookies } from "next/headers"
 import Link from "next/link"
 import { TrendingUp, TrendingDown, Minus } from "lucide-react"
+import { puedeVer } from "@/lib/permisos"
 
 interface KpiData {
   ventasMes: number
@@ -85,16 +86,21 @@ export default async function DashboardPage() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
 
+  const cookieStore = await cookies()
+  const empresaIdCookie = cookieStore.get("sl_empresa_id")?.value
+
   const usuario = await prisma.usuario.findUnique({
     where: { authUserId: user!.id },
     include: { empresas: { include: { empresa: true } } },
   })
 
-  const cookieStore = await cookies()
-  const empresaIdCookie = cookieStore.get("sl_empresa_id")?.value
-  const empresa =
-    usuario?.empresas.find((eu) => eu.empresa.id === empresaIdCookie)?.empresa ??
-    usuario?.empresas[0]?.empresa
+  const euActiva =
+    usuario?.empresas.find((eu) => eu.empresa.id === empresaIdCookie) ??
+    usuario?.empresas[0]
+
+  const empresa = euActiva?.empresa
+  const empresaRol = euActiva?.rol ?? "usuario"
+  const permisos: string[] = euActiva?.permisos ?? []
 
   const today = new Date().toLocaleDateString("es-CL", {
     weekday: "long", day: "numeric", month: "long", year: "numeric",
@@ -102,6 +108,23 @@ export default async function DashboardPage() {
 
   const schemaName = empresa?.schemaName
   const kpis = schemaName ? await getKpis(schemaName) : null
+
+  const accesosRapidos = [
+    { href: "/dashboard/facturacion/facturas/nueva", label: "Nueva factura",    permiso: "facturacion" },
+    { href: "/dashboard/facturacion/boletas/nueva",  label: "Nueva boleta",     permiso: "facturacion" },
+    { href: "/dashboard/compras/nueva",              label: "Nueva compra",     permiso: "compras"     },
+    { href: "/dashboard/crm",                        label: "Pipeline CRM",     permiso: "crm"         },
+    { href: "/dashboard/inventario/movimientos",     label: "Ingreso de stock", permiso: "inventario"  },
+  ].filter(a => puedeVer(a.permiso, empresaRol, permisos))
+
+  const reportesLinks = [
+    { href: "/dashboard/reportes/ventas",     label: "Reporte de ventas",     desc: "Análisis por mes, clientes y productos" },
+    { href: "/dashboard/reportes/inventario", label: "Reporte de inventario", desc: "Valorización y movimientos de stock"    },
+    { href: "/dashboard/reportes/compras",    label: "Reporte de compras",    desc: "Proveedores y margen bruto estimado"    },
+  ].filter(() => puedeVer("reportes", empresaRol, permisos))
+
+  const puedeVerInventario = puedeVer("inventario", empresaRol, permisos)
+  const puedeVerCRM        = puedeVer("crm",        empresaRol, permisos)
 
   return (
     <div>
@@ -134,7 +157,7 @@ export default async function DashboardPage() {
           <p className={`mt-2 text-2xl font-semibold ${kpis && kpis.stockBajoCant > 0 ? "text-sl-warning" : "text-sl-text"}`}>
             {kpis ? kpis.stockBajoCant : "—"}
           </p>
-          {kpis && kpis.stockBajoCant > 0 && (
+          {kpis && kpis.stockBajoCant > 0 && puedeVerInventario && (
             <Link href="/dashboard/inventario?bajo=1" className="text-xs text-sl-warning underline-offset-2 hover:underline">
               Ver productos
             </Link>
@@ -146,51 +169,47 @@ export default async function DashboardPage() {
           <p className="mt-2 text-2xl font-semibold text-sl-text">
             {kpis ? kpis.pipelineActivo : "—"}
           </p>
-          <Link href="/dashboard/crm" className="text-xs text-sl-purple hover:underline underline-offset-2">
-            Ver pipeline
-          </Link>
+          {puedeVerCRM && (
+            <Link href="/dashboard/crm" className="text-xs text-sl-purple hover:underline underline-offset-2">
+              Ver pipeline
+            </Link>
+          )}
         </div>
       </div>
 
       {/* Links rápidos a reportes */}
-      <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
-        {[
-          { href: "/dashboard/reportes/ventas",    label: "Reporte de ventas",    desc: "Análisis por mes, clientes y productos" },
-          { href: "/dashboard/reportes/inventario", label: "Reporte de inventario", desc: "Valorización y movimientos de stock" },
-          { href: "/dashboard/reportes/compras",    label: "Reporte de compras",   desc: "Proveedores y margen bruto estimado" },
-        ].map((r) => (
-          <Link
-            key={r.href}
-            href={r.href}
-            className="rounded-card border border-sl-border bg-sl-bg-card p-4 transition-colors hover:border-sl-purple/40 hover:bg-sl-purple/[0.04]"
-          >
-            <p className="font-medium text-sl-text">{r.label}</p>
-            <p className="mt-0.5 text-xs text-sl-muted">{r.desc}</p>
-          </Link>
-        ))}
-      </div>
-
-      {/* Accesos rápidos */}
-      <div className="rounded-card border border-sl-border bg-sl-bg-card p-5">
-        <h2 className="mb-3 text-sm font-semibold text-sl-text">Accesos rápidos</h2>
-        <div className="flex flex-wrap gap-2">
-          {[
-            { href: "/dashboard/facturacion/facturas/nueva", label: "Nueva factura" },
-            { href: "/dashboard/facturacion/boletas/nueva",  label: "Nueva boleta" },
-            { href: "/dashboard/compras/nueva",              label: "Nueva compra" },
-            { href: "/dashboard/crm",                        label: "Pipeline CRM" },
-            { href: "/dashboard/inventario/movimientos",     label: "Ingreso de stock" },
-          ].map((a) => (
+      {reportesLinks.length > 0 && (
+        <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
+          {reportesLinks.map((r) => (
             <Link
-              key={a.href}
-              href={a.href}
-              className="rounded-lg border border-sl-border px-3 py-1.5 text-sm text-sl-muted transition-colors hover:border-sl-purple/40 hover:text-sl-text"
+              key={r.href}
+              href={r.href}
+              className="rounded-card border border-sl-border bg-sl-bg-card p-4 transition-colors hover:border-sl-purple/40 hover:bg-sl-purple/[0.04]"
             >
-              {a.label}
+              <p className="font-medium text-sl-text">{r.label}</p>
+              <p className="mt-0.5 text-xs text-sl-muted">{r.desc}</p>
             </Link>
           ))}
         </div>
-      </div>
+      )}
+
+      {/* Accesos rápidos */}
+      {accesosRapidos.length > 0 && (
+        <div className="rounded-card border border-sl-border bg-sl-bg-card p-5">
+          <h2 className="mb-3 text-sm font-semibold text-sl-text">Accesos rápidos</h2>
+          <div className="flex flex-wrap gap-2">
+            {accesosRapidos.map((a) => (
+              <Link
+                key={a.href}
+                href={a.href}
+                className="rounded-lg border border-sl-border px-3 py-1.5 text-sm text-sl-muted transition-colors hover:border-sl-purple/40 hover:text-sl-text"
+              >
+                {a.label}
+              </Link>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   )
 }

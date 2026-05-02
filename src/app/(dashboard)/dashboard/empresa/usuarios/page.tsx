@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect, useCallback } from "react"
-import { Plus, X, Trash2, Pencil, CheckCircle, AlertTriangle, Shield, User as UserIcon } from "lucide-react"
+import { Plus, X, Trash2, Pencil, CheckCircle, AlertTriangle, Shield, User as UserIcon, KeyRound } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { SECCIONES_ERP } from "@/lib/permisos"
 import type { ApiResponse } from "@/types"
@@ -23,9 +23,10 @@ function initials(nombre: string) {
 export default function UsuariosEmpresaPage() {
   const [usuarios, setUsuarios] = useState<UsuarioRow[]>([])
   const [loading, setLoading] = useState(true)
-  const [modal, setModal] = useState<"crear" | "editar" | null>(null)
+  const [modal, setModal] = useState<"crear" | "editar" | "password" | null>(null)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [form, setForm] = useState(EMPTY)
+  const [newPassword, setNewPassword] = useState("")
   const [saving, setSaving] = useState(false)
   const [toast, setToast] = useState<{ msg: string; ok: boolean } | null>(null)
 
@@ -53,6 +54,7 @@ export default function UsuariosEmpresaPage() {
     setEditingId(u.id)
     setModal("editar")
   }
+  function openPassword(u: UsuarioRow) { setNewPassword(""); setEditingId(u.id); setModal("password") }
   function closeModal() { setModal(null); setEditingId(null) }
 
   function togglePermiso(key: string) {
@@ -77,7 +79,7 @@ export default function UsuariosEmpresaPage() {
         const j = await res.json()
         if (!res.ok) { notify(j.error ?? "Error al crear usuario", false); return }
         notify("Usuario creado. Comparte sus credenciales.", true)
-      } else if (editingId) {
+      } else if (modal === "editar" && editingId) {
         const res = await fetch(`/api/empresa/usuarios/${editingId}`, {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
@@ -94,18 +96,38 @@ export default function UsuariosEmpresaPage() {
     }
   }
 
+  async function changePassword() {
+    if (!newPassword || newPassword.length < 6) return notify("La contraseña debe tener al menos 6 caracteres", false)
+    if (!editingId) return
+    setSaving(true)
+    try {
+      const res = await fetch(`/api/empresa/usuarios/${editingId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ newPassword }),
+      })
+      const j = await res.json()
+      if (!res.ok) { notify(j.error ?? "Error al cambiar contraseña", false); return }
+      notify("Contraseña actualizada", true)
+      closeModal()
+    } finally {
+      setSaving(false)
+    }
+  }
+
   async function toggleActivo(u: UsuarioRow) {
     const res = await fetch(`/api/empresa/usuarios/${u.id}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ activo: !u.activo }),
     })
-    if (!res.ok) { notify("Error al cambiar estado", false); return }
+    const j = await res.json()
+    if (!res.ok) { notify(j.error ?? "Error al cambiar estado", false); return }
     setUsuarios(prev => prev.map(x => x.id === u.id ? { ...x, activo: !x.activo } : x))
   }
 
   async function del(u: UsuarioRow) {
-    if (!confirm(`¿Eliminar el acceso de ${u.usuario.nombre}?`)) return
+    if (!confirm(`¿Eliminar el acceso de ${u.usuario.nombre} a esta empresa?`)) return
     const res = await fetch(`/api/empresa/usuarios/${u.id}`, { method: "DELETE" })
     const j = await res.json()
     if (!res.ok) { notify(j.error ?? "Error al eliminar", false); return }
@@ -144,11 +166,7 @@ export default function UsuariosEmpresaPage() {
             {loading ? (
               <tr><td colSpan={5} className="py-12 text-center text-sm text-sl-muted">Cargando...</td></tr>
             ) : usuarios.length === 0 ? (
-              <tr>
-                <td colSpan={5} className="py-12 text-center text-sm text-sl-muted">
-                  Sin usuarios registrados en esta empresa
-                </td>
-              </tr>
+              <tr><td colSpan={5} className="py-12 text-center text-sm text-sl-muted">Sin usuarios registrados en esta empresa</td></tr>
             ) : (
               usuarios.map(u => (
                 <tr key={u.id} className="border-b border-sl-border/50 last:border-0 hover:bg-sl-purple/[0.03]">
@@ -201,10 +219,13 @@ export default function UsuariosEmpresaPage() {
                   </td>
                   <td className="px-4 py-3 text-right">
                     <div className="flex items-center justify-end gap-1">
-                      <button onClick={() => openEditar(u)} className="rounded p-1.5 text-sl-muted hover:bg-sl-purple/[0.15] hover:text-sl-purple-light">
+                      <button onClick={() => openPassword(u)} title="Cambiar contraseña" className="rounded p-1.5 text-sl-muted hover:bg-sl-purple/[0.15] hover:text-sl-purple-light">
+                        <KeyRound className="h-3.5 w-3.5" />
+                      </button>
+                      <button onClick={() => openEditar(u)} title="Editar" className="rounded p-1.5 text-sl-muted hover:bg-sl-purple/[0.15] hover:text-sl-purple-light">
                         <Pencil className="h-3.5 w-3.5" />
                       </button>
-                      <button onClick={() => del(u)} className="rounded p-1.5 text-sl-muted hover:bg-sl-danger/[0.15] hover:text-sl-danger">
+                      <button onClick={() => del(u)} title="Eliminar acceso" className="rounded p-1.5 text-sl-muted hover:bg-sl-danger/[0.15] hover:text-sl-danger">
                         <Trash2 className="h-3.5 w-3.5" />
                       </button>
                     </div>
@@ -222,13 +243,11 @@ export default function UsuariosEmpresaPage() {
       </div>
 
       {/* Modal crear/editar */}
-      {modal && (
+      {(modal === "crear" || modal === "editar") && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
           <div className="w-full max-w-md rounded-card border border-sl-border bg-sl-bg-card shadow-2xl">
             <div className="flex items-center justify-between border-b border-sl-border px-5 py-4">
-              <h2 className="font-medium text-sl-text">
-                {modal === "crear" ? "Agregar usuario" : "Editar usuario"}
-              </h2>
+              <h2 className="font-medium text-sl-text">{modal === "crear" ? "Agregar usuario" : "Editar usuario"}</h2>
               <button onClick={closeModal} className="text-sl-muted hover:text-sl-text"><X className="h-4 w-4" /></button>
             </div>
 
@@ -287,10 +306,7 @@ export default function UsuariosEmpresaPage() {
                     <label className="mb-2 block text-xs font-medium text-sl-muted">Secciones con acceso</label>
                     <div className="space-y-2">
                       {SECCIONES_ERP.map(s => (
-                        <label
-                          key={s.key}
-                          className="flex cursor-pointer items-start gap-3 rounded-lg border border-sl-border/60 p-3 transition-colors hover:border-sl-purple/40 hover:bg-sl-purple/[0.04]"
-                        >
+                        <label key={s.key} className="flex cursor-pointer items-start gap-3 rounded-lg border border-sl-border/60 p-3 transition-colors hover:border-sl-purple/40 hover:bg-sl-purple/[0.04]">
                           <input
                             type="checkbox"
                             checked={form.permisos.includes(s.key)}
@@ -310,15 +326,39 @@ export default function UsuariosEmpresaPage() {
             </div>
 
             <div className="flex justify-end gap-2 border-t border-sl-border px-5 py-4">
-              <button onClick={closeModal} className="rounded-lg border border-sl-border px-4 py-2 text-sm text-sl-muted hover:text-sl-text">
-                Cancelar
-              </button>
-              <button
-                onClick={save}
-                disabled={saving}
-                className="rounded-lg bg-sl-purple px-4 py-2 text-sm font-medium text-white hover:bg-sl-purple-dark disabled:opacity-50"
-              >
+              <button onClick={closeModal} className="rounded-lg border border-sl-border px-4 py-2 text-sm text-sl-muted hover:text-sl-text">Cancelar</button>
+              <button onClick={save} disabled={saving} className="rounded-lg bg-sl-purple px-4 py-2 text-sm font-medium text-white hover:bg-sl-purple-dark disabled:opacity-50">
                 {saving ? "Guardando..." : modal === "crear" ? "Crear usuario" : "Guardar cambios"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal cambiar contraseña */}
+      {modal === "password" && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-sm rounded-card border border-sl-border bg-sl-bg-card shadow-2xl">
+            <div className="flex items-center justify-between border-b border-sl-border px-5 py-4">
+              <h2 className="font-medium text-sl-text">Cambiar contraseña</h2>
+              <button onClick={closeModal} className="text-sl-muted hover:text-sl-text"><X className="h-4 w-4" /></button>
+            </div>
+            <div className="p-5">
+              <label className="mb-1.5 block text-xs font-medium text-sl-muted">Nueva contraseña</label>
+              <input
+                type="password"
+                value={newPassword}
+                onChange={e => setNewPassword(e.target.value)}
+                placeholder="Mínimo 6 caracteres"
+                autoFocus
+                className="w-full rounded-lg border border-sl-border bg-sl-bg-card px-3 py-2 text-sm text-sl-text outline-none focus:border-sl-purple placeholder:text-sl-muted"
+              />
+              <p className="mt-1.5 text-xs text-sl-muted">El usuario deberá usar esta contraseña en su próximo inicio de sesión</p>
+            </div>
+            <div className="flex justify-end gap-2 border-t border-sl-border px-5 py-4">
+              <button onClick={closeModal} className="rounded-lg border border-sl-border px-4 py-2 text-sm text-sl-muted hover:text-sl-text">Cancelar</button>
+              <button onClick={changePassword} disabled={saving} className="rounded-lg bg-sl-purple px-4 py-2 text-sm font-medium text-white hover:bg-sl-purple-dark disabled:opacity-50">
+                {saving ? "Guardando..." : "Cambiar contraseña"}
               </button>
             </div>
           </div>

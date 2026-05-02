@@ -1,13 +1,15 @@
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/db/prisma"
 import { getEmpresaContext } from "@/lib/db/get-empresa-context"
+import { createAdminClient } from "@/lib/supabase/admin"
 import { z } from "zod"
 import type { ApiResponse } from "@/types"
 
 const updateSchema = z.object({
-  rol:      z.enum(["admin", "usuario"]).optional(),
-  permisos: z.array(z.string()).optional(),
-  activo:   z.boolean().optional(),
+  rol:         z.enum(["admin", "usuario"]).optional(),
+  permisos:    z.array(z.string()).optional(),
+  activo:      z.boolean().optional(),
+  newPassword: z.string().min(6).max(100).optional(),
 })
 
 export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -20,11 +22,39 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
   const parsed = updateSchema.safeParse(body)
   if (!parsed.success) return NextResponse.json<ApiResponse>({ error: parsed.error.issues[0].message }, { status: 400 })
 
-  const eu = await prisma.empresaUsuario.findFirst({ where: { id, empresaId: ctx.empresaId } })
+  const eu = await prisma.empresaUsuario.findFirst({
+    where: { id, empresaId: ctx.empresaId },
+    include: { usuario: true },
+  })
   if (!eu) return NextResponse.json<ApiResponse>({ error: "Usuario no encontrado" }, { status: 404 })
 
+  // No puede bajarse el rol a sí mismo
   if (eu.usuarioId === ctx.usuarioId && parsed.data.rol === "usuario") {
     return NextResponse.json<ApiResponse>({ error: "No puedes quitarte el rol de administrador" }, { status: 400 })
+  }
+
+  // No puede desactivar al último admin
+  if (parsed.data.activo === false && eu.rol === "admin") {
+    const adminCount = await prisma.empresaUsuario.count({
+      where: { empresaId: ctx.empresaId, rol: "admin", activo: true },
+    })
+    if (adminCount <= 1) {
+      return NextResponse.json<ApiResponse>({ error: "No puedes desactivar al único administrador de la empresa" }, { status: 400 })
+    }
+  }
+
+  // Cambio de contraseña
+  if (parsed.data.newPassword) {
+    const supabaseAdmin = createAdminClient()
+    const { error: pwError } = await supabaseAdmin.auth.admin.updateUserById(
+      eu.usuario.authUserId,
+      { password: parsed.data.newPassword }
+    )
+    if (pwError) return NextResponse.json<ApiResponse>({ error: pwError.message }, { status: 400 })
+
+    if (parsed.data.rol === undefined && parsed.data.permisos === undefined && parsed.data.activo === undefined) {
+      return NextResponse.json<ApiResponse>({ data: { ok: true } })
+    }
   }
 
   const updated = await prisma.empresaUsuario.update({
@@ -50,6 +80,16 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
   const eu = await prisma.empresaUsuario.findFirst({ where: { id, empresaId: ctx.empresaId } })
   if (!eu) return NextResponse.json<ApiResponse>({ error: "Usuario no encontrado" }, { status: 404 })
   if (eu.usuarioId === ctx.usuarioId) return NextResponse.json<ApiResponse>({ error: "No puedes eliminarte a ti mismo" }, { status: 400 })
+
+  // Proteger último admin
+  if (eu.rol === "admin") {
+    const adminCount = await prisma.empresaUsuario.count({
+      where: { empresaId: ctx.empresaId, rol: "admin", activo: true },
+    })
+    if (adminCount <= 1) {
+      return NextResponse.json<ApiResponse>({ error: "No puedes eliminar al único administrador de la empresa" }, { status: 400 })
+    }
+  }
 
   await prisma.empresaUsuario.delete({ where: { id } })
   return NextResponse.json<ApiResponse>({ data: { ok: true } })
