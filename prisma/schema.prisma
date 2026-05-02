@@ -7,15 +7,22 @@ datasource db {
 }
 
 model Empresa {
-  id          String           @id @default(cuid())
-  rut         String           @unique
-  razonSocial String           @map("razon_social")
-  schemaName  String           @unique @map("schema_name")
-  plan        String           @default("starter")
-  activa      Boolean          @default(true)
-  creadaEn    DateTime         @default(now()) @map("creada_en")
-  dteConfig   DteConfig?
-  usuarios    EmpresaUsuario[]
+  id            String           @id @default(cuid())
+  rut           String           @unique
+  razonSocial   String           @map("razon_social")
+  giro          String?
+  logoUrl       String?          @map("logo_url")
+  telefono      String?
+  emailContacto String?          @map("email_contacto")
+  web           String?
+  direccion     String?
+  ciudad        String?
+  schemaName    String           @unique @map("schema_name")
+  plan          String           @default("starter")
+  activa        Boolean          @default(true)
+  creadaEn      DateTime         @default(now()) @map("creada_en")
+  dteConfig     DteConfig?
+  usuarios      EmpresaUsuario[]
 
   @@map("empresas")
 }
@@ -33,12 +40,14 @@ model Usuario {
 }
 
 model EmpresaUsuario {
-  id        String  @id @default(cuid())
-  empresaId String  @map("empresa_id")
-  usuarioId String  @map("usuario_id")
-  rol       String  @default("admin")
-  empresa   Empresa @relation(fields: [empresaId], references: [id], onDelete: Cascade)
-  usuario   Usuario @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  id        String   @id @default(cuid())
+  empresaId String   @map("empresa_id")
+  usuarioId String   @map("usuario_id")
+  rol       String   @default("admin")
+  permisos  String[] @default([])
+  activo    Boolean  @default(true)
+  empresa   Empresa  @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  usuario   Usuario  @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
 
   @@unique([empresaId, usuarioId])
   @@map("empresa_usuario")

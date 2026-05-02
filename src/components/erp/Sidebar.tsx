@@ -4,36 +4,20 @@ import { useState } from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import {
-  LayoutDashboard,
-  FileText,
-  Receipt,
-  FileCheck,
-  Package,
-  ShoppingCart,
-  Users,
-  Settings,
-  Shield,
-  UserCheck,
-  Truck,
-  Box,
-  ChevronDown,
-  PanelLeftClose,
-  FileMinus,
-  Warehouse,
-  Activity,
-  BarChart2,
-  TrendingUp,
-  ClipboardList,
-  BookOpen,
-  BookMarked,
-  Zap,
+  LayoutDashboard, FileText, Receipt, FileCheck, Package,
+  ShoppingCart, Users, Settings, Shield, UserCheck, Truck,
+  Box, ChevronDown, PanelLeftClose, FileMinus, Warehouse,
+  Activity, BarChart2, TrendingUp, ClipboardList, BookOpen,
+  BookMarked, Zap, Building2, UserCog,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { puedeVer } from "@/lib/permisos"
 
 interface NavItem {
   label: string
   href: string
   icon: React.ComponentType<{ className?: string }>
+  permiso?: string
 }
 
 interface NavSection {
@@ -46,73 +30,87 @@ const navSections: NavSection[] = [
   {
     title: "Principal",
     defaultOpen: true,
-    items: [{ label: "Dashboard", href: "/dashboard", icon: LayoutDashboard }],
+    items: [
+      { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
+    ],
   },
   {
     title: "Maestros",
     defaultOpen: true,
     items: [
-      { label: "Clientes", href: "/dashboard/maestros/clientes", icon: UserCheck },
-      { label: "Proveedores", href: "/dashboard/maestros/proveedores", icon: Truck },
-      { label: "Productos", href: "/dashboard/maestros/productos", icon: Box },
+      { label: "Clientes",    href: "/dashboard/maestros/clientes",    icon: UserCheck, permiso: "maestros" },
+      { label: "Proveedores", href: "/dashboard/maestros/proveedores", icon: Truck,     permiso: "maestros" },
+      { label: "Productos",   href: "/dashboard/maestros/productos",   icon: Box,       permiso: "maestros" },
     ],
   },
   {
     title: "Facturación",
     defaultOpen: true,
     items: [
-      { label: "Facturas", href: "/dashboard/facturacion/facturas", icon: FileText },
-      { label: "Boletas", href: "/dashboard/facturacion/boletas", icon: Receipt },
-      { label: "Guías de despacho", href: "/dashboard/facturacion/guias", icon: Truck },
-      { label: "Notas C/D", href: "/dashboard/facturacion/notas", icon: FileMinus },
-      { label: "Cotizaciones", href: "/dashboard/facturacion/cotizaciones", icon: FileCheck },
+      { label: "Facturas",          href: "/dashboard/facturacion/facturas",    icon: FileText,  permiso: "facturacion" },
+      { label: "Boletas",           href: "/dashboard/facturacion/boletas",     icon: Receipt,   permiso: "facturacion" },
+      { label: "Guías de despacho", href: "/dashboard/facturacion/guias",       icon: Truck,     permiso: "facturacion" },
+      { label: "Notas C/D",         href: "/dashboard/facturacion/notas",       icon: FileMinus, permiso: "facturacion" },
+      { label: "Cotizaciones",      href: "/dashboard/facturacion/cotizaciones",icon: FileCheck, permiso: "facturacion" },
     ],
   },
   {
     title: "Operaciones",
     defaultOpen: true,
     items: [
-      { label: "Inventario", href: "/dashboard/inventario", icon: Package },
-      { label: "Bodegas", href: "/dashboard/inventario/bodegas", icon: Warehouse },
-      { label: "Movimientos", href: "/dashboard/inventario/movimientos", icon: Activity },
-      { label: "Compras", href: "/dashboard/compras", icon: ShoppingCart },
-      { label: "CRM", href: "/dashboard/crm", icon: Users },
-      { label: "Métricas CRM", href: "/dashboard/crm/metricas", icon: BarChart2 },
+      { label: "Inventario",   href: "/dashboard/inventario",            icon: Package,     permiso: "inventario" },
+      { label: "Bodegas",      href: "/dashboard/inventario/bodegas",    icon: Warehouse,   permiso: "inventario" },
+      { label: "Movimientos",  href: "/dashboard/inventario/movimientos",icon: Activity,    permiso: "inventario" },
+      { label: "Compras",      href: "/dashboard/compras",               icon: ShoppingCart,permiso: "compras"    },
+      { label: "CRM",          href: "/dashboard/crm",                   icon: Users,       permiso: "crm"        },
+      { label: "Métricas CRM", href: "/dashboard/crm/metricas",          icon: BarChart2,   permiso: "crm"        },
     ],
   },
   {
     title: "Contabilidad",
     defaultOpen: true,
     items: [
-      { label: "Plan de Cuentas", href: "/dashboard/contabilidad/plan-cuentas", icon: BookOpen     },
-      { label: "Asientos",        href: "/dashboard/contabilidad/asientos",     icon: BookMarked   },
-      { label: "Reglas",          href: "/dashboard/contabilidad/reglas",       icon: Zap          },
-      { label: "Reportes",        href: "/dashboard/contabilidad/reportes",     icon: TrendingUp   },
+      { label: "Plan de Cuentas", href: "/dashboard/contabilidad/plan-cuentas", icon: BookOpen,  permiso: "contabilidad" },
+      { label: "Asientos",        href: "/dashboard/contabilidad/asientos",     icon: BookMarked,permiso: "contabilidad" },
+      { label: "Reglas",          href: "/dashboard/contabilidad/reglas",       icon: Zap,       permiso: "contabilidad" },
+      { label: "Reportes",        href: "/dashboard/contabilidad/reportes",     icon: TrendingUp,permiso: "contabilidad" },
     ],
   },
   {
     title: "Reportes",
     defaultOpen: true,
     items: [
-      { label: "Ventas",     href: "/dashboard/reportes/ventas",     icon: TrendingUp    },
-      { label: "Inventario", href: "/dashboard/reportes/inventario", icon: BarChart2     },
-      { label: "Compras",    href: "/dashboard/reportes/compras",    icon: ClipboardList },
+      { label: "Ventas",     href: "/dashboard/reportes/ventas",     icon: TrendingUp,    permiso: "reportes" },
+      { label: "Inventario", href: "/dashboard/reportes/inventario", icon: BarChart2,     permiso: "reportes" },
+      { label: "Compras",    href: "/dashboard/reportes/compras",    icon: ClipboardList, permiso: "reportes" },
+    ],
+  },
+  {
+    title: "Empresa",
+    defaultOpen: true,
+    items: [
+      { label: "Perfil empresa", href: "/dashboard/empresa",          icon: Building2, permiso: "admin" },
+      { label: "Usuarios",       href: "/dashboard/empresa/usuarios", icon: UserCog,   permiso: "admin" },
     ],
   },
   {
     title: "Configuración",
     defaultOpen: true,
-    items: [{ label: "Configuración", href: "/dashboard/configuracion", icon: Settings }],
+    items: [
+      { label: "Configuración", href: "/dashboard/configuracion", icon: Settings, permiso: "admin" },
+    ],
   },
 ]
 
 interface SidebarProps {
   usuario: { nombre: string; rolGlobal: string }
+  empresaRol: string
+  permisos: string[]
   open: boolean
   onToggle: () => void
 }
 
-export function Sidebar({ usuario, open, onToggle }: SidebarProps) {
+export function Sidebar({ usuario, empresaRol, permisos, open, onToggle }: SidebarProps) {
   const pathname = usePathname()
 
   const [openSections, setOpenSections] = useState<Record<string, boolean>>(() =>
@@ -160,8 +158,13 @@ export function Sidebar({ usuario, open, onToggle }: SidebarProps) {
       {/* Navegación */}
       <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-1">
         {navSections.map((section) => {
+          const visibleItems = section.items.filter(
+            (item) => puedeVer(item.permiso, empresaRol, permisos)
+          )
+          if (visibleItems.length === 0) return null
+
           const isOpen = openSections[section.title] ?? true
-          const hasActive = section.items.some((i) => isActive(i.href))
+          const hasActive = visibleItems.some((i) => isActive(i.href))
 
           return (
             <div key={section.title} className="mb-1">
@@ -189,7 +192,7 @@ export function Sidebar({ usuario, open, onToggle }: SidebarProps) {
 
               {isOpen && (
                 <ul className="mt-0.5 space-y-0.5">
-                  {section.items.map((item) => (
+                  {visibleItems.map((item) => (
                     <li key={item.href}>
                       <Link
                         href={item.href}
@@ -211,6 +214,7 @@ export function Sidebar({ usuario, open, onToggle }: SidebarProps) {
           )
         })}
 
+        {/* Panel super_admin */}
         {usuario.rolGlobal === "super_admin" && (
           <div className="mb-1">
             <button
@@ -257,7 +261,7 @@ export function Sidebar({ usuario, open, onToggle }: SidebarProps) {
           </div>
           <div className="min-w-0 flex-1">
             <p className="truncate text-sm font-medium text-sl-text">{usuario.nombre}</p>
-            <p className="truncate text-xs text-sl-muted capitalize">{usuario.rolGlobal}</p>
+            <p className="truncate text-xs text-sl-muted capitalize">{empresaRol}</p>
           </div>
         </div>
       </div>

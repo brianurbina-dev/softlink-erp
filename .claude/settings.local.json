@@ -30,7 +30,9 @@
       "Bash(vercel *)",
       "Bash(npx vercel *)",
       "Bash(npx next *)",
-      "Bash(grep -E \"\\(\\\\.tsx|\\\\.ts\\)$|Error:\")"
+      "Bash(grep -E \"\\(\\\\.tsx|\\\\.ts\\)$|Error:\")",
+      "Bash(Get-Content .env)",
+      "Bash(Select-String \"DIRECT_URL\")"
     ]
   }
 }

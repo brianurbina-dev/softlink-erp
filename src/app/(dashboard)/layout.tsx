@@ -27,10 +27,11 @@ export default async function DashboardLayout({ children }: { children: React.Re
   const cookieStore = await cookies()
   const empresaIdCookie = cookieStore.get("sl_empresa_id")?.value
 
-  const empresaActiva =
-    usuario.empresas.find((eu) => eu.empresa.id === empresaIdCookie)?.empresa ??
-    usuario.empresas[0].empresa
+  const euActiva =
+    usuario.empresas.find((eu) => eu.empresa.id === empresaIdCookie) ??
+    usuario.empresas[0]
 
+  const empresaActiva = euActiva.empresa
   const empresas = usuario.empresas.map((eu) => ({
     id: eu.empresa.id,
     razonSocial: eu.empresa.razonSocial,
@@ -41,6 +42,8 @@ export default async function DashboardLayout({ children }: { children: React.Re
       usuario={{ nombre: usuario.nombre, rolGlobal: usuario.rolGlobal }}
       empresa={empresaActiva}
       empresas={empresas}
+      empresaRol={euActiva.rol}
+      permisos={euActiva.permisos}
     >
       {children}
     </DashboardShell>

@@ -7,6 +7,8 @@ export type EmpresaContext = {
   empresaId: string
   schemaName: string
   rol: string
+  permisos: string[]
+  esAdmin: boolean
 }
 
 /** Obtiene el contexto de empresa del usuario autenticado para usar en API routes. */
@@ -41,5 +43,7 @@ export async function getEmpresaContext(): Promise<EmpresaContext | null> {
     empresaId: eu.empresa.id,
     schemaName: eu.empresa.schemaName,
     rol: eu.rol,
+    permisos: eu.permisos,
+    esAdmin: eu.rol === "admin",
   }
 }

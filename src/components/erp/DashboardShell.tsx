@@ -11,10 +11,12 @@ interface Props {
   usuario: { nombre: string; rolGlobal: string }
   empresa: { id: string; razonSocial: string; schemaName?: string }
   empresas: { id: string; razonSocial: string }[]
+  empresaRol: string
+  permisos: string[]
   children: React.ReactNode
 }
 
-export function DashboardShell({ usuario, empresa, empresas, children }: Props) {
+export function DashboardShell({ usuario, empresa, empresas, empresaRol, permisos, children }: Props) {
   const [open, setOpen] = useState(true)
   const [mounted, setMounted] = useState(false)
 
@@ -34,7 +36,7 @@ export function DashboardShell({ usuario, empresa, empresas, children }: Props) 
 
   return (
     <div className="flex min-h-screen bg-sl-bg-dark text-sl-text">
-      <Sidebar usuario={usuario} open={!mounted || open} onToggle={toggle} />
+      <Sidebar usuario={usuario} empresaRol={empresaRol} permisos={permisos} open={!mounted || open} onToggle={toggle} />
 
       {/* Contenido principal */}
       <div
