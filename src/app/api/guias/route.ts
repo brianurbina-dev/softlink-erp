@@ -21,6 +21,9 @@ export interface GuiaRow {
   total: number
   estado: string
   factura_id: string | null
+  ref_factura_id: string | null
+  ref_tipo: number | null
+  ref_folio: number | null
   track_id: string | null
   pdf_url: string | null
   creado_en: string
@@ -53,8 +56,23 @@ export async function POST(req: NextRequest) {
   const {
     tipoTraslado, clienteId, fecha,
     direccionDestino, transportistaRut, transportistaNombre, patente,
-    items,
+    items, refFacturaId,
   } = parsed.data
+
+  // Si hay referencia a factura, obtenemos tipo y folio
+  let refTipo: number | null = null
+  let refFolio: number | null = null
+
+  if (refFacturaId) {
+    const [facturaRef] = await prisma.$queryRawUnsafe<{ tipo: number; folio: number }[]>(
+      `SELECT tipo, folio FROM "${ctx.schemaName}".facturas WHERE id = $1 AND folio IS NOT NULL`,
+      refFacturaId
+    )
+    if (facturaRef) {
+      refTipo = facturaRef.tipo
+      refFolio = facturaRef.folio
+    }
+  }
 
   let neto = 0
   const computedItems = items.map((item) => {
@@ -65,19 +83,20 @@ export async function POST(req: NextRequest) {
     return { ...item, subtotal }
   })
 
-  // Solo aplica IVA si es venta (tipo_traslado = 1)
   const iva = tipoTraslado === 1 ? calcularIva(neto) : 0
   const total = neto + iva
 
   const [guia] = await prisma.$queryRawUnsafe<{ id: string }[]>(
     `INSERT INTO "${ctx.schemaName}".guias
      (tipo_traslado, fecha, cliente_id, direccion_destino,
-      transportista_rut, transportista_nombre, patente, neto, iva, total, estado)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, 'borrador') RETURNING id`,
+      transportista_rut, transportista_nombre, patente, neto, iva, total, estado,
+      ref_factura_id, ref_tipo, ref_folio)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, 'borrador', $11, $12, $13) RETURNING id`,
     tipoTraslado, fecha, clienteId ?? null,
     direccionDestino ?? null, transportistaRut ?? null,
     transportistaNombre ?? null, patente ?? null,
-    neto, iva, total
+    neto, iva, total,
+    refFacturaId ?? null, refTipo, refFolio
   )
 
   for (const item of computedItems) {

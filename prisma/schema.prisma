@@ -17,6 +17,7 @@ model Empresa {
   web           String?
   direccion     String?
   ciudad        String?
+  actividadesEconomicas Int[]    @default([]) @map("actividades_economicas")
   schemaName    String           @unique @map("schema_name")
   plan          String           @default("starter")
   activa        Boolean          @default(true)
@@ -62,6 +63,9 @@ model DteConfig {
   certificadoNombre   String? @map("certificado_nombre")
   certificadoPassword String? @map("certificado_password")
   ambiente            String  @default("certificacion")
+  numeroResolucion    Int?    @default(0) @map("numero_resolucion")
+  fechaResolucion     String? @map("fecha_resolucion")
+  rutCertificado      String? @map("rut_certificado")
   empresa             Empresa @relation(fields: [empresaId], references: [id], onDelete: Cascade)
 
   @@map("dte_config")

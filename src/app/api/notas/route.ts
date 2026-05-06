@@ -4,6 +4,7 @@ import { getEmpresaContext } from "@/lib/db/get-empresa-context"
 import { notaSchema } from "@/lib/validations/notas"
 import { calcularIva } from "@/lib/chile/impuestos"
 import { getDTEService } from "@/services/dte/getDTEService"
+import { ensureFolio } from "@/services/dte/cafService"
 import type { ApiResponse } from "@/types"
 import type { DatosNota } from "@/services/dte/DTEService"
 
@@ -110,6 +111,16 @@ export async function POST(req: NextRequest) {
     return NextResponse.json<ApiResponse>({ data: { id: nota.id } }, { status: 201 })
   }
 
+  let reserva: { folio: number; cafXml: string }
+  try {
+    reserva = await ensureFolio(ctx.schemaName, tipo, ctx.empresaId)
+  } catch {
+    return NextResponse.json<ApiResponse>(
+      { error: "Nota guardada como borrador. No se pudo obtener folio DTE automáticamente." },
+      { status: 201 }
+    )
+  }
+
   const dte = await getDTEService(ctx.empresaId)
   if (!dte) {
     return NextResponse.json<ApiResponse>(
@@ -120,6 +131,8 @@ export async function POST(req: NextRequest) {
 
   const datos: DatosNota = {
     tipo: tipo as 56 | 61,
+    folio: reserva.folio,
+    cafXml: reserva.cafXml,
     clienteRut: cliente.rut,
     clienteRazonSocial: cliente.razon_social,
     clienteGiro: cliente.giro ?? "Actividades del giro",

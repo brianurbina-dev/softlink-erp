@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/db/prisma"
 import { getEmpresaContext } from "@/lib/db/get-empresa-context"
 import { getDTEService } from "@/services/dte/getDTEService"
+import { ensureFolio } from "@/services/dte/cafService"
 import type { ApiResponse } from "@/types"
 import type { DatosNota } from "@/services/dte/DTEService"
 
@@ -57,16 +58,26 @@ export async function POST(
     params.id
   )
 
+  let reserva: { folio: number; cafXml: string }
+  try {
+    reserva = await ensureFolio(ctx.schemaName, 61, ctx.empresaId)
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "Error al obtener folio DTE"
+    return NextResponse.json<ApiResponse>({ error: msg }, { status: 400 })
+  }
+
   const dte = await getDTEService(ctx.empresaId)
   if (!dte) {
     return NextResponse.json<ApiResponse>(
-      { error: "Configura el API key DTE antes de anular" },
+      { error: "Configura el API key y certificado DTE antes de anular" },
       { status: 400 }
     )
   }
 
   const datos: DatosNota = {
     tipo: 61,
+    folio: reserva.folio,
+    cafXml: reserva.cafXml,
     clienteRut: factura.cliente_rut,
     clienteRazonSocial: factura.cliente_razon_social,
     clienteGiro: factura.cliente_giro ?? "Actividades del giro",

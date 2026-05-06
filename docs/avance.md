@@ -10,12 +10,14 @@ Claude Code lo lee para saber qué está hecho y qué viene.
 | Fase | Módulos | Estado |
 |------|---------|--------|
 | Fase 1 — Core | 1.1 ✅, 1.2 ✅, 1.3 ✅ | ✅ Completa |
-| Fase 2 — DTE | 2.1 ✅, 2.2 ✅, 2.3 ✅, 2.4 ✅, 2.5 ✅ | ✅ Completa |
+| Fase 2 — DTE | 2.1 ✅, 2.2 ✅, 2.3 ✅, 2.4 ✅, 2.5 ✅ | ✅ Completa (2.4 y 2.5 pend. prueba SII) |
 | Fase 3 — Inventario | 3.1 ✅, 3.2 ✅, 3.3 ✅ | ✅ Completa |
 | Fase 4 — Compras | 4.1 ✅, 4.2 ✅ | ✅ Completa |
 | Fase 5 — CRM | 5.1 ✅, 5.2 ✅, 5.3 ✅ | ✅ Completa |
 | Fase 6 — Reportes | 6.1 ✅, 6.2 ✅, 6.3 ✅ | ✅ Completa |
 | Fase 7 — Contabilidad | 7.1 ✅, 7.2 ✅, 7.3 ✅, 7.4 ✅ | ✅ Completa |
+| Fase 8 — Usuarios | 8.1 ✅ | ✅ Completa |
+| Fase 9 — PDF y Comunicaciones | 9.1 ⏳ | Pendiente análisis y desarrollo |
 
 ---
 
@@ -86,9 +88,11 @@ Claude Code lo lee para saber qué está hecho y qué viene.
   - Página `/dashboard/facturacion/facturas/nueva` — formulario completo: tipo 33/34, selector de cliente, fecha, tabla de ítems dinámica, cálculo en tiempo real (neto/IVA/total)
   - Flujo dual: "Guardar borrador" (crea en BD) o "Emitir DTE" (crea + emite en secuencia)
   - API: `GET/POST /api/facturas`, `GET/PUT/DELETE /api/facturas/[id]`, `POST /api/facturas/[id]/emitir`
-  - `SimpleAPIAdapter.emitirFactura()` implementado: envía a `POST /v1/dte/emitir` (endpoint a confirmar con ChileSystems)
-  - Todas las queries operacionales usan `$queryRawUnsafe` con el schema de empresa
-  - Nota: Email de factura y subida a R2 pendientes (requieren servicios no configurados aún)
+  - `SimpleAPIAdapter.emitirFactura()` flujo 3 pasos (DTE/generar → Envio/generar → Envio/enviar)
+  - Folio reserve/confirm para evitar consumo de folios en emisiones fallidas
+  - Asiento contable automático al emitir (`factura_emitida`)
+  - **✅ PROBADO CON SII — Factura tipo 33 emitida y aceptada en certificación (trackId 248340542)**
+  - Nota: Email y subida a R2 pendientes (Fase 9)
 - Próximo módulo: 2.3
 
 ## Módulo 2.3 — Boletas electrónicas (tipo 39)
@@ -100,13 +104,14 @@ Claude Code lo lee para saber qué está hecho y qué viene.
   - Página `/dashboard/facturacion/boletas` — listado con stats y acciones inline
   - Página `/dashboard/facturacion/boletas/nueva` — interfaz POS: grid de productos clickeables (filtrables), carrito lateral con +/- cantidad, receptor opcional, totales en tiempo real
   - Precio mostrado en catálogo = precio neto × 1.19 (precio al público con IVA)
-  - `SimpleAPIAdapter.emitirBoleta()` implementado (tipo 39, receptor opcional)
-  - DTEService.DatosBoleta actualizado con campos receptor opcionales
-  - Pendiente: aplicar migración SQL `20260430070000_add_boletas_tables` en Supabase
+  - `SimpleAPIAdapter.emitirBoleta()` flujo 3 pasos con diferencias clave vs factura: CAF en `files2`, `Tipo: 2` (EnvioBOLETA), Emisor con `RazonSocialBoleta`/`GiroBoleta`, `FechaEmision` (no `FechaEmisionString`), `IndicadorServicio: 3`, Receptor siempre presente (anónimo `66666666-6` si no hay RUT válido), precios con IVA incluido en detalles, sin `TasaIVA` en Totales
+  - Folio reserve/confirm, asiento contable automático (`boleta_emitida`), validación RUT receptor con `validarRut()`
+  - **✅ PROBADO CON SII — Boleta tipo 39 emitida y aceptada en certificación**
+  - Nota: Email y subida a R2 pendientes (Fase 9)
 - Próximo módulo: 2.4
 
 ## Módulo 2.4 — Notas de crédito y débito (61 y 56)
-- Estado: ✅ CERRADO
+- Estado: ✅ CERRADO — ⚠️ Emisión DTE pendiente de prueba con SII
 - Fecha cierre: 30/04/2026
 - Notas:
   - Migración SQL: agrega `referencia_tipo`, `referencia_folio`, `referencia_razon` a `facturas` en todos los schemas
@@ -121,7 +126,7 @@ Claude Code lo lee para saber qué está hecho y qué viene.
 - Próximo módulo: 2.5
 
 ## Módulo 2.5 — Guías de despacho (tipo 52)
-- Estado: ✅ CERRADO
+- Estado: ✅ CERRADO — ✅ Emisión DTE probada y aceptada con SII en certificación
 - Fecha cierre: 30/04/2026
 - Notas:
   - Tablas `guias` y `guia_items` en schema de empresa (cliente opcional, transporte opcional)
@@ -305,6 +310,24 @@ Claude Code lo lee para saber qué está hecho y qué viene.
   - Página `/dashboard/contabilidad/reportes` — 3 tabs, filtro de rango de fechas compartido
   - Migración consolidada `20260502100000_add_contabilidad_completa` cubre las 4 tablas de Fase 7
 
+## Módulo 8.1 — Gestión de usuarios por empresa (roles y permisos)
+- Estado: ✅ CERRADO
+- Fecha cierre: 02/05/2026
+- Notas:
+  - Dos roles en `empresa_usuario`: `admin` (acceso completo) y `usuario` (permisos granulares)
+  - Nuevo campo `permisos TEXT[]` en `empresa_usuario` — lista de secciones habilitadas para usuarios no-admin
+  - Nuevo campo `activo BOOLEAN` en `empresa_usuario` — permite desactivar acceso sin borrar el registro
+  - Migración `20260502200000_add_empresa_perfil_y_permisos` — agrega columnas a `empresas` y `empresa_usuario`
+  - `src/lib/permisos.ts` — función `puedeVer()` compartida entre server components y client components
+  - Secciones disponibles: maestros, facturacion, inventario, compras, crm, contabilidad, reportes
+  - Sidebar filtra items según `puedeVer()` (props `empresaRol` y `permisos` desde layout server)
+  - Dashboard: accesos rápidos y links a reportes filtrados por permisos; "Ver pipeline" y "Ver productos" condicionados
+  - Página `/dashboard/empresa` — perfil de empresa (razón social, giro, datos de contacto, plan)
+  - Página `/dashboard/empresa/usuarios` — CRUD completo: crear con email/contraseña/secciones, editar rol/secciones, toggle activo, cambio de contraseña, eliminar
+  - Protecciones: no se puede eliminar o desactivar al último admin, no se puede quitar rol admin a sí mismo
+  - Cambio de contraseña vía Supabase Admin API (`updateUserById`)
+  - API: `GET/PUT /api/empresa/perfil`, `GET/POST /api/empresa/usuarios`, `PUT/DELETE /api/empresa/usuarios/[id]`
+
 ---
 
 ## Notas y decisiones tomadas en el camino
@@ -321,6 +344,29 @@ La instancia de `pg.Pool` con `DIRECT_URL` se sigue usando para operaciones DDL 
 
 ### 30/04/2026 — Zod v4 renombró .errors a .issues
 Zod 4.x cambió `error.errors[0]` por `error.issues[0]`. Afecta todos los `safeParse()`.
+
+---
+
+## Módulos pendientes de desarrollo
+
+## Módulo 9.1 — Generación de PDF y envío por correo
+- Estado: ⏳ PENDIENTE — requiere análisis previo
+- Descripción: El sistema debe generar el PDF oficial de cada DTE (Representación Impresa del SII) y enviarlo automáticamente por correo a los destinatarios configurados en la empresa.
+- Alcance definido:
+  - Generar PDF con el formato exigido por el SII para cada tipo de DTE (33, 34, 39, 52, 56, 61)
+  - Datos del emisor (logo, razón social, RUT, giro, dirección) tomados de la configuración de empresa
+  - Almacenar el PDF y el XML en un servicio de archivos (a definir en análisis)
+  - Enviar automáticamente el PDF al/los correo(s) configurados en la empresa al momento de emitir
+  - Configuración de correos de envío como parte del perfil de empresa (pendiente de desarrollar)
+- Análisis requerido antes de implementar:
+  - **Tecnología de generación PDF**: evaluar opciones (Puppeteer/headless Chrome, react-pdf, @react-pdf/renderer, pdfkit, jsPDF). Criterio: mantenibilidad, calidad visual, facilidad para respetar el layout SII
+  - **Almacenamiento de logos**: evaluar si usar Cloudflare R2 (ya en el stack), Supabase Storage, o subida directa a la BD como base64. Considerar tamaño, URLs públicas y caducidad
+  - **Almacenamiento de PDFs y XMLs**: Cloudflare R2 ya está en el stack — definir si es suficiente o si conviene Supabase Storage por simplicidad
+  - **Servicio de correo**: evaluar Resend, SendGrid, Nodemailer con SMTP propio. Criterio: plan gratuito suficiente para inicio, buena entregabilidad en Chile
+- Prioridad sugerida: alta — requisito legal y operacional para uso real del sistema en producción
+- Origen: definido por el usuario el 05/05/2026
+
+---
 
 ### 30/04/2026 — Deploy Vercel diferido
 Se decidió no deployar en Vercel durante el Módulo 1.1.

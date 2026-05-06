@@ -17,6 +17,7 @@ export const guiaSchema = z.object({
   transportistaNombre: z.string().max(100).nullable().optional(),
   patente: z.string().max(20).nullable().optional(),
   items: z.array(guiaItemSchema).min(1, "Agrega al menos un ítem"),
+  refFacturaId: z.string().nullable().optional(),
 })
 
 export type GuiaInput = z.infer<typeof guiaSchema>

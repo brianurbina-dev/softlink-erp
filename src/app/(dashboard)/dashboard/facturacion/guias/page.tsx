@@ -13,6 +13,7 @@ import {
   Receipt,
   Truck,
   XCircle,
+  ExternalLink,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import type { ApiResponse } from "@/types"
@@ -29,6 +30,9 @@ interface GuiaRow {
   total: number
   estado: string
   factura_id: string | null
+  ref_factura_id: string | null
+  ref_tipo: number | null
+  ref_folio: number | null
   pdf_url: string | null
   creado_en: string
 }
@@ -184,6 +188,7 @@ export default function GuiasPage() {
                 {guias.map((g) => {
                   const est = ESTADO_CONFIG[g.estado] ?? ESTADO_CONFIG.borrador
                   const tipoInfo = TIPO_TRASLADO[g.tipo_traslado] ?? TIPO_TRASLADO[1]
+                  const tieneRefFactura = !!g.ref_factura_id && !!g.ref_folio
                   return (
                     <tr key={g.id} className="border-b border-sl-border/40 last:border-0 transition-colors hover:bg-sl-border/10">
                       <td className="px-4 py-3 font-mono text-sl-text">
@@ -209,9 +214,16 @@ export default function GuiasPage() {
                         {fmtMonto(g.total)}
                       </td>
                       <td className="px-4 py-3">
-                        <span className={cn("inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium", est.color)}>
-                          {est.icon} {est.label}
-                        </span>
+                        <div className="space-y-1">
+                          <span className={cn("inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium", est.color)}>
+                            {est.icon} {est.label}
+                          </span>
+                          {tieneRefFactura && (
+                            <p className="text-xs text-sl-muted">
+                              Ref. Fact. #{g.ref_folio}
+                            </p>
+                          )}
+                        </div>
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-1">
@@ -235,14 +247,25 @@ export default function GuiasPage() {
                           )}
                           {g.estado === "emitida" && (
                             <>
-                              <button
-                                onClick={() => handleFacturar(g.id, g.folio)}
-                                disabled={facturando === g.id}
-                                className="flex items-center gap-1 rounded-md border border-sl-border px-2.5 py-1 text-xs text-sl-muted transition-colors hover:border-sl-purple/50 hover:text-sl-purple-light disabled:opacity-50"
-                              >
-                                {facturando === g.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <FileText className="h-3 w-3" />}
-                                Facturar
-                              </button>
+                              {tieneRefFactura ? (
+                                <Link
+                                  href="/dashboard/facturacion/facturas"
+                                  className="flex items-center gap-1 rounded-md border border-sl-border px-2.5 py-1 text-xs text-sl-muted transition-colors hover:border-sl-purple/50 hover:text-sl-purple-light"
+                                  title={`Ver Factura #${g.ref_folio}`}
+                                >
+                                  <ExternalLink className="h-3 w-3" />
+                                  Factura #{g.ref_folio}
+                                </Link>
+                              ) : (
+                                <button
+                                  onClick={() => handleFacturar(g.id, g.folio)}
+                                  disabled={facturando === g.id}
+                                  className="flex items-center gap-1 rounded-md border border-sl-border px-2.5 py-1 text-xs text-sl-muted transition-colors hover:border-sl-purple/50 hover:text-sl-purple-light disabled:opacity-50"
+                                >
+                                  {facturando === g.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <FileText className="h-3 w-3" />}
+                                  Facturar
+                                </button>
+                              )}
                               {g.pdf_url && (
                                 <a
                                   href={g.pdf_url}

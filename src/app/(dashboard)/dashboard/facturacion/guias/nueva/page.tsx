@@ -24,6 +24,15 @@ interface Cliente {
   razon_social: string
 }
 
+interface FacturaEmitida {
+  id: string
+  tipo: number
+  folio: number
+  cliente_razon_social: string | null
+  cliente_rut: string | null
+  total: number
+}
+
 interface Producto {
   id: string
   codigo: string
@@ -97,6 +106,10 @@ export default function NuevaGuiaPage() {
   const [clientes, setClientes] = useState<Cliente[]>([])
   const [productos, setProductos] = useState<Producto[]>([])
   const [productoMap, setProductoMap] = useState<Map<string, Producto>>(new Map())
+  const [facturasEmitidas, setFacturasEmitidas] = useState<FacturaEmitida[]>([])
+
+  const [refFacturaId, setRefFacturaId] = useState<string>("")
+  const [usarRefFactura, setUsarRefFactura] = useState(false)
 
   const [saving, setSaving] = useState(false)
   const [emitting, setEmitting] = useState(false)
@@ -111,11 +124,13 @@ export default function NuevaGuiaPage() {
     Promise.all([
       fetch("/api/clientes").then((r) => r.json()) as Promise<ApiResponse<Cliente[]>>,
       fetch("/api/productos").then((r) => r.json()) as Promise<ApiResponse<Producto[]>>,
-    ]).then(([c, p]) => {
+      fetch("/api/facturas").then((r) => r.json()) as Promise<ApiResponse<FacturaEmitida[]>>,
+    ]).then(([c, p, f]) => {
       setClientes(c.data ?? [])
       const prods = p.data ?? []
       setProductos(prods)
       setProductoMap(new Map(prods.map((pr) => [pr.id, pr])))
+      setFacturasEmitidas((f.data ?? []).filter((fac) => fac.folio != null))
     })
   }, [])
 
@@ -156,6 +171,7 @@ export default function NuevaGuiaPage() {
         precioUnitario: i.precioUnitario,
         descuento: i.descuento,
       })),
+      refFacturaId: usarRefFactura && refFacturaId ? refFacturaId : null,
     }
   }
 
@@ -348,6 +364,57 @@ export default function NuevaGuiaPage() {
             />
           </div>
         </div>
+      </div>
+
+      {/* Referencia a factura */}
+      <div className="space-y-3 rounded-card border border-sl-border bg-sl-bg-card p-5">
+        <h2 className="text-sm font-semibold text-sl-text">Factura relacionada</h2>
+        <div className="flex gap-3">
+          <button
+            onClick={() => { setUsarRefFactura(false); setRefFacturaId("") }}
+            className={cn(
+              "flex-1 rounded-lg border py-2.5 text-sm transition-colors",
+              !usarRefFactura
+                ? "border-sl-purple bg-sl-purple/[0.08] text-sl-text"
+                : "border-sl-border text-sl-muted hover:text-sl-text"
+            )}
+          >
+            Sin referencia
+            <p className="mt-0.5 text-xs text-sl-muted">Habilitará el botón &quot;Facturar&quot; al emitir</p>
+          </button>
+          <button
+            onClick={() => setUsarRefFactura(true)}
+            className={cn(
+              "flex-1 rounded-lg border py-2.5 text-sm transition-colors",
+              usarRefFactura
+                ? "border-sl-purple bg-sl-purple/[0.08] text-sl-text"
+                : "border-sl-border text-sl-muted hover:text-sl-text"
+            )}
+          >
+            Referenciar factura existente
+            <p className="mt-0.5 text-xs text-sl-muted">El DTE incluirá referencia oficial al SII</p>
+          </button>
+        </div>
+        {usarRefFactura && (
+          <div>
+            <label className="mb-1.5 block text-xs font-medium text-sl-muted">Seleccionar factura emitida</label>
+            <select
+              value={refFacturaId}
+              onChange={(e) => setRefFacturaId(e.target.value)}
+              className="w-full rounded-lg border border-sl-border bg-sl-bg-card px-3 py-2 text-sm text-sl-text outline-none focus:border-sl-purple"
+            >
+              <option value="">— Selecciona una factura —</option>
+              {facturasEmitidas.map((f) => (
+                <option key={f.id} value={f.id}>
+                  Factura #{f.folio} — {f.cliente_razon_social ?? f.cliente_rut ?? "Sin receptor"} — $ {Number(f.total).toLocaleString("es-CL")}
+                </option>
+              ))}
+            </select>
+            {facturasEmitidas.length === 0 && (
+              <p className="mt-1.5 text-xs text-sl-muted">No hay facturas emitidas disponibles</p>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Ítems */}

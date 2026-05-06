@@ -2,15 +2,21 @@ import type { Result } from "@/types"
 
 export interface DatosFactura {
   tipo: 33 | 34
+  folio: number
+  cafXml: string
   clienteRut: string
   clienteRazonSocial: string
   clienteGiro: string
   clienteDireccion: string
+  clienteComuna?: string
+  clienteContacto?: string
   items: ItemFactura[]
   fechaEmision: Date
 }
 
 export interface DatosBoleta {
+  folio: number
+  cafXml: string
   items: ItemFactura[]
   fechaEmision: Date
   receptorRut?: string
@@ -18,25 +24,34 @@ export interface DatosBoleta {
 }
 
 export interface DatosGuia {
+  folio: number
+  cafXml: string
   tipoTraslado: number
   clienteRut?: string
   clienteRazonSocial?: string
   clienteGiro?: string
   clienteDireccion?: string
+  clienteComuna?: string
   direccionDestino?: string
   transportistaRut?: string
   transportistaNombre?: string
   patente?: string
   items: ItemFactura[]
   fechaEmision: Date
+  referenciaTipo?: number
+  referenciaFolio?: number
+  referenciaRazon?: string
 }
 
 export interface DatosNota {
   tipo: 56 | 61
+  folio: number
+  cafXml: string
   clienteRut: string
   clienteRazonSocial: string
   clienteGiro: string
   clienteDireccion: string
+  clienteComuna?: string
   referenciaTipo: number
   referenciaFolio: number
   referenciaRazon: string

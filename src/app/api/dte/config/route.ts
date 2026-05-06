@@ -9,11 +9,24 @@ export async function GET() {
   const ctx = await getEmpresaContext()
   if (!ctx) return NextResponse.json<ApiResponse>({ error: "No autenticado" }, { status: 401 })
 
-  const config = await prisma.dteConfig.findUnique({
-    where: { empresaId: ctx.empresaId },
-  })
+  const [config, empresa] = await Promise.all([
+    prisma.dteConfig.findUnique({ where: { empresaId: ctx.empresaId } }),
+    prisma.empresa.findUnique({ where: { id: ctx.empresaId } }),
+  ])
 
-  if (!config) return NextResponse.json<ApiResponse>({ data: null })
+  if (!config) return NextResponse.json<ApiResponse>({
+    data: {
+      proveedor: "simpleapi",
+      ambiente: "certificacion",
+      apiKeyConfigurado: false,
+      apiKeyMasked: null,
+      certificadoConfigurado: false,
+      certificadoNombre: null,
+      rutEmpresa: empresa?.rut ?? "",
+      rutCertificado: "",
+      actividadesEconomicas: empresa?.actividadesEconomicas ?? [],
+    },
+  })
 
   return NextResponse.json<ApiResponse>({
     data: {
@@ -23,6 +36,9 @@ export async function GET() {
       apiKeyConfigurado: !!config.apiKey,
       certificadoNombre: config.certificadoNombre,
       certificadoConfigurado: !!config.certificado,
+      rutEmpresa: empresa?.rut ?? "",
+      rutCertificado: config.rutCertificado ?? "",
+      actividadesEconomicas: empresa?.actividadesEconomicas ?? [],
     },
   })
 }
@@ -38,40 +54,34 @@ export async function PUT(req: NextRequest) {
     return NextResponse.json<ApiResponse>({ error: parsed.error.issues[0].message }, { status: 400 })
   }
 
-  const { proveedor, apiKey, ambiente, certificado, certificadoNombre, certificadoPassword } =
-    parsed.data
+  const {
+    proveedor, apiKey, ambiente,
+    certificado, certificadoNombre, certificadoPassword,
+    rutEmpresa, rutCertificado, actividadesEconomicas,
+  } = parsed.data
 
-  const existing = await prisma.dteConfig.findUnique({
-    where: { empresaId: ctx.empresaId },
-  })
-
-  const updateData: Record<string, string | null> = {
-    proveedor,
-    ambiente,
+  // Actualizar campos de empresa si cambiaron
+  const empresaData: Record<string, unknown> = {}
+  if (rutEmpresa) empresaData.rut = rutEmpresa
+  if (actividadesEconomicas !== undefined) empresaData.actividadesEconomicas = actividadesEconomicas
+  if (Object.keys(empresaData).length > 0) {
+    await prisma.empresa.update({ where: { id: ctx.empresaId }, data: empresaData })
   }
 
-  // Solo actualizar apiKey si se envió un valor nuevo (no está vacío)
-  if (apiKey) updateData.apiKey = apiKey
+  const existing = await prisma.dteConfig.findUnique({ where: { empresaId: ctx.empresaId } })
 
-  // Solo actualizar certificado si se envió uno nuevo
-  if (certificado) {
-    updateData.certificado = certificado
-    updateData.certificadoNombre = certificadoNombre ?? null
-  }
+  const updateData: Record<string, string | null> = { proveedor, ambiente }
 
-  // Solo actualizar password si se envió uno nuevo
+  if (apiKey)              updateData.apiKey = apiKey
+  if (certificado)         { updateData.certificado = certificado; updateData.certificadoNombre = certificadoNombre ?? null }
   if (certificadoPassword) updateData.certificadoPassword = certificadoPassword
+  if (rutCertificado)      updateData.rutCertificado = rutCertificado
 
   let config
   if (existing) {
-    config = await prisma.dteConfig.update({
-      where: { empresaId: ctx.empresaId },
-      data: updateData,
-    })
+    config = await prisma.dteConfig.update({ where: { empresaId: ctx.empresaId }, data: updateData })
   } else {
-    config = await prisma.dteConfig.create({
-      data: { ...updateData, empresaId: ctx.empresaId },
-    })
+    config = await prisma.dteConfig.create({ data: { ...updateData, empresaId: ctx.empresaId } })
   }
 
   return NextResponse.json<ApiResponse>({
@@ -80,6 +90,7 @@ export async function PUT(req: NextRequest) {
       ambiente: config.ambiente,
       apiKeyConfigurado: !!config.apiKey,
       certificadoConfigurado: !!config.certificado,
+      rutCertificado: config.rutCertificado ?? "",
     },
   })
 }

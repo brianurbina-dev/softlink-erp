@@ -32,7 +32,8 @@
       "Bash(npx next *)",
       "Bash(grep -E \"\\(\\\\.tsx|\\\\.ts\\)$|Error:\")",
       "Bash(Get-Content .env)",
-      "Bash(Select-String \"DIRECT_URL\")"
+      "Bash(Select-String \"DIRECT_URL\")",
+      "Bash(psql *)"
     ]
   }
 }

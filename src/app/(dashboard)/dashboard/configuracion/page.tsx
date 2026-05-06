@@ -12,6 +12,7 @@ import {
   Eye,
   EyeOff,
   FileKey,
+  Building2,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 
@@ -22,6 +23,9 @@ interface ConfigState {
   apiKeyMasked: string | null
   certificadoConfigurado: boolean
   certificadoNombre: string | null
+  rutEmpresa: string
+  rutCertificado: string
+  actividadesEconomicas: number[]
 }
 
 type TestStatus = "idle" | "loading" | "ok" | "error"
@@ -32,6 +36,9 @@ export default function ConfiguracionPage() {
 
   // Campos editables
   const [ambiente, setAmbiente] = useState<"certificacion" | "produccion">("certificacion")
+  const [rutEmpresa, setRutEmpresa] = useState("")
+  const [rutCertificado, setRutCertificado] = useState("")
+  const [actividadesInput, setActividadesInput] = useState("")
   const [apiKey, setApiKey] = useState("")
   const [showApiKey, setShowApiKey] = useState(false)
   const [certBase64, setCertBase64] = useState<string | null>(null)
@@ -58,6 +65,9 @@ export default function ConfiguracionPage() {
         if (j.data) {
           setConfig(j.data)
           setAmbiente(j.data.ambiente ?? "certificacion")
+          setRutEmpresa(j.data.rutEmpresa ?? "")
+          setRutCertificado(j.data.rutCertificado ?? "")
+          setActividadesInput((j.data.actividadesEconomicas ?? []).join(", "))
         }
       })
       .finally(() => setLoadingConfig(false))
@@ -80,13 +90,21 @@ export default function ConfiguracionPage() {
   async function save() {
     setSaving(true)
     try {
-      const payload: Record<string, unknown> = { ambiente, proveedor: "simpleapi" }
-      if (apiKey.trim()) payload.apiKey = apiKey.trim()
-      if (certBase64) {
-        payload.certificado = certBase64
-        payload.certificadoNombre = certNombre
+      const parsedCiiu = actividadesInput
+        .split(/[,\s]+/)
+        .map((s) => parseInt(s.trim(), 10))
+        .filter((n) => !isNaN(n) && n > 0)
+
+      const payload: Record<string, unknown> = {
+        ambiente,
+        proveedor: "simpleapi",
+        actividadesEconomicas: parsedCiiu,
       }
-      if (certPassword.trim()) payload.certificadoPassword = certPassword.trim()
+      if (apiKey.trim())          payload.apiKey = apiKey.trim()
+      if (certBase64)             { payload.certificado = certBase64; payload.certificadoNombre = certNombre }
+      if (certPassword.trim())    payload.certificadoPassword = certPassword.trim()
+      if (rutEmpresa.trim())      payload.rutEmpresa = rutEmpresa.trim()
+      if (rutCertificado.trim())  payload.rutCertificado = rutCertificado.trim()
 
       const res = await fetch("/api/dte/config", {
         method: "PUT",
@@ -108,6 +126,7 @@ export default function ConfiguracionPage() {
       if (fresh.data) {
         setConfig(fresh.data)
         setAmbiente(fresh.data.ambiente)
+        setActividadesInput((fresh.data.actividadesEconomicas ?? []).join(", "))
       }
     } finally {
       setSaving(false)
@@ -133,7 +152,14 @@ export default function ConfiguracionPage() {
     }
   }
 
-  const hasPendingChanges = !!apiKey || !!certBase64 || !!certPassword || ambiente !== (config?.ambiente ?? "certificacion")
+  const hasPendingChanges =
+    !!apiKey ||
+    !!certBase64 ||
+    !!certPassword ||
+    ambiente !== (config?.ambiente ?? "certificacion") ||
+    rutEmpresa !== (config?.rutEmpresa ?? "") ||
+    rutCertificado !== (config?.rutCertificado ?? "") ||
+    actividadesInput !== (config?.actividadesEconomicas ?? []).join(", ")
 
   if (loadingConfig) {
     return (
@@ -195,6 +221,60 @@ export default function ConfiguracionPage() {
             </p>
           </div>
         )}
+      </div>
+
+      {/* Sección: Identificación */}
+      <div className="rounded-card border border-sl-border bg-sl-bg-card p-5">
+        <div className="mb-4 flex items-center gap-2">
+          <Building2 className="h-4 w-4 text-sl-purple" />
+          <h2 className="text-sm font-semibold text-sl-text">Identificación</h2>
+        </div>
+
+        <div className="space-y-3">
+          <div>
+            <label className="mb-1.5 block text-xs font-medium text-sl-muted">RUT Empresa</label>
+            <input
+              type="text"
+              value={rutEmpresa}
+              onChange={(e) => setRutEmpresa(e.target.value)}
+              placeholder="12345678-9"
+              className="w-full rounded-lg border border-sl-border bg-sl-bg-card py-2 pl-3 pr-3 text-sm text-sl-text outline-none focus:border-sl-purple placeholder:text-sl-muted font-mono"
+            />
+            <p className="mt-1.5 text-xs text-sl-muted">RUT con el que opera la empresa (sin puntos, con guión).</p>
+          </div>
+
+          <div>
+            <label className="mb-1.5 block text-xs font-medium text-sl-muted">RUT Certificado</label>
+            <input
+              type="text"
+              value={rutCertificado}
+              onChange={(e) => setRutCertificado(e.target.value)}
+              placeholder="12345678-9"
+              className="w-full rounded-lg border border-sl-border bg-sl-bg-card py-2 pl-3 pr-3 text-sm text-sl-text outline-none focus:border-sl-purple placeholder:text-sl-muted font-mono"
+            />
+            <p className="mt-1.5 text-xs text-sl-muted">
+              RUT del titular del certificado digital (.p12). Puede ser distinto al RUT empresa
+              si el certificado fue emitido a nombre de otra persona.
+            </p>
+          </div>
+
+          <div>
+            <label className="mb-1.5 block text-xs font-medium text-sl-muted">
+              Actividades Económicas (CIIU)
+            </label>
+            <input
+              type="text"
+              value={actividadesInput}
+              onChange={(e) => setActividadesInput(e.target.value)}
+              placeholder="620200, 631100"
+              className="w-full rounded-lg border border-sl-border bg-sl-bg-card py-2 pl-3 pr-3 text-sm text-sl-text outline-none focus:border-sl-purple placeholder:text-sl-muted font-mono"
+            />
+            <p className="mt-1.5 text-xs text-sl-muted">
+              Códigos CIIU del SII separados por coma. Requeridos por el SII para emitir DTE.
+              Ej: <span className="font-mono text-sl-text/70">620200</span> (desarrollo de software).
+            </p>
+          </div>
+        </div>
       </div>
 
       {/* Sección: API Key SimpleAPI */}

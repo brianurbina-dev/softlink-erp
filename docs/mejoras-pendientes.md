@@ -5,6 +5,20 @@ Se revisan al cerrar cada fase para decidir si se incorporan al roadmap.
 
 ---
 
+## [2026-05-05] Anulación de boleta via nota de crédito
+- Módulo relacionado: 2.3 (Boletas electrónicas)
+- Descripción: En Chile las boletas no se anulan directamente con el SII — el mecanismo legal es emitir una nota de crédito de boleta (tipo 61) por el monto completo. El botón "Anular" en el listado de boletas debe generar automáticamente esa NC, igual que el flujo de anulación de facturas, pero referenciando una boleta (tipo 39) en lugar de una factura.
+- Prioridad sugerida: media
+- Origen: consulta del usuario — confirmado por normativa SII
+
+## [2026-05-05] Precio editable al crear boleta
+- Módulo relacionado: 2.3 (Boletas electrónicas — interfaz POS)
+- Descripción: En la pantalla de nueva boleta (grid de productos + carrito), el precio unitario que viene del catálogo debería poder modificarse manualmente por ítem antes de emitir. Útil para descuentos puntuales o precios acordados que difieren del catálogo.
+- Prioridad sugerida: media
+- Origen: lo mencionó el usuario durante el desarrollo
+
+---
+
 ## [2026-05-01] CRM 5.2 — Seguimiento y actividades por oportunidad
 - Módulo relacionado: 5.2 (pospuesto por decisión del usuario)
 - Descripción: Registro de actividades por oportunidad (llamadas, reuniones, emails, tareas). Timeline de seguimiento. Fecha de próximo contacto y recordatorios.

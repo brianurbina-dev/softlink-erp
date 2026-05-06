@@ -209,6 +209,9 @@ export async function crearSchemaEmpresa(schemaName: string): Promise<void> {
         total                INTEGER NOT NULL DEFAULT 0,
         estado               TEXT NOT NULL DEFAULT 'borrador',
         factura_id           TEXT,
+        ref_factura_id       TEXT,
+        ref_tipo             INTEGER,
+        ref_folio            INTEGER,
         track_id             TEXT,
         pdf_url              TEXT,
         creado_en            TIMESTAMP NOT NULL DEFAULT NOW()
@@ -305,6 +308,20 @@ export async function crearSchemaEmpresa(schemaName: string): Promise<void> {
         orden       INTEGER NOT NULL DEFAULT 0,
         activo      BOOLEAN NOT NULL DEFAULT true,
         creado_en   TIMESTAMP NOT NULL DEFAULT NOW()
+      )
+    `)
+
+    await client.query(`
+      CREATE TABLE "${schemaName}".caf (
+        id               TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
+        tipo_dte         INTEGER NOT NULL,
+        folio_desde      INTEGER NOT NULL,
+        folio_hasta      INTEGER NOT NULL,
+        folio_actual     INTEGER NOT NULL,
+        folio_pendiente  INTEGER,
+        xml_contenido    TEXT NOT NULL,
+        activo           BOOLEAN NOT NULL DEFAULT true,
+        creado_en        TIMESTAMP NOT NULL DEFAULT NOW()
       )
     `)
 
