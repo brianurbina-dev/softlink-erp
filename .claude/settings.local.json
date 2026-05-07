@@ -39,7 +39,8 @@
       "Bash(Start-Process powershell *)",
       "PowerShell(Start-Process powershell -ArgumentList \"-NoExit\", \"-Command\", \"cd 'C:\\\\Users\\\\Brian\\\\Documents\\\\ProyectosClaude_Kimi2.5\\\\SoftlinkERP'; npm run dev\" -WindowStyle Normal)",
       "Bash(npm list *)",
-      "Bash(node -e \"const b = require\\('bwip-js'\\); b.toBuffer\\({bcid:'pdf417',text:'test',scale:2,height:10}\\).then\\(buf => console.log\\('OK', buf.length\\)\\).catch\\(e => console.error\\(e.message\\)\\)\")"
+      "Bash(node -e \"const b = require\\('bwip-js'\\); b.toBuffer\\({bcid:'pdf417',text:'test',scale:2,height:10}\\).then\\(buf => console.log\\('OK', buf.length\\)\\).catch\\(e => console.error\\(e.message\\)\\)\")",
+      "PowerShell(git *)"
     ]
   }
 }
