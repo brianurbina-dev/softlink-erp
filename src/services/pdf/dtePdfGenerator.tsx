@@ -391,7 +391,7 @@ function DTEDocument({ d }: { d: PdfDatosDTE }) {
           {/* Izquierda: logo (solo si existe) */}
           {d.emisor.logoUrl ? (
             <View style={S.headerLogo}>
-              <Image src={d.emisor.logoUrl} style={S.logoImg} alt="" />
+              <Image src={d.emisor.logoUrl} style={S.logoImg} />
             </View>
           ) : null}
 
