@@ -515,7 +515,7 @@ function DTEDocument({ d }: { d: PdfDatosDTE }) {
             <View style={S.timbreArea}>
               <Text style={S.timbreTitulo}>Timbre Electronico SII</Text>
               {d.tedBarcode ? (
-                {/* eslint-disable-next-line jsx-a11y/alt-text */}
+                // eslint-disable-next-line jsx-a11y/alt-text
                 <Image src={d.tedBarcode} style={S.timbreBarcode} />
               ) : (
                 <>
