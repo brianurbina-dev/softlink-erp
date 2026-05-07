@@ -1,7 +1,11 @@
 "use client"
 
-import { useState, useEffect } from "react"
-import { Save, Globe, Phone, Mail, MapPin, Building2 } from "lucide-react"
+import { useState, useEffect, useRef } from "react"
+import {
+  Save, Globe, Phone, Mail, MapPin, Building2,
+  Upload, ImageIcon, Trash2, Loader2, CheckCircle, AlertTriangle,
+} from "lucide-react"
+import { cn } from "@/lib/utils"
 import type { ApiResponse } from "@/types"
 
 interface EmpresaData {
@@ -18,7 +22,7 @@ interface EmpresaData {
   plan: string
 }
 
-type FormData = Omit<EmpresaData, "id" | "rut" | "plan">
+type FormData = Omit<EmpresaData, "id" | "rut" | "plan" | "logoUrl">
 
 function Field({
   label, value, onChange, placeholder, type = "text", readOnly = false, icon,
@@ -55,7 +59,7 @@ function Field({
 export default function EmpresaPerfilPage() {
   const [data, setData] = useState<EmpresaData | null>(null)
   const [form, setForm] = useState<FormData>({
-    razonSocial: "", giro: null, logoUrl: null, telefono: null,
+    razonSocial: "", giro: null, telefono: null,
     emailContacto: null, web: null, direccion: null, ciudad: null,
   })
   const [loading, setLoading] = useState(true)
@@ -63,11 +67,31 @@ export default function EmpresaPerfilPage() {
   const [dirty, setDirty] = useState(false)
   const [msg, setMsg] = useState<{ text: string; ok: boolean } | null>(null)
 
+  // Logo
+  const [hasLogo, setHasLogo] = useState(false)
+  const [logoTimestamp, setLogoTimestamp] = useState(Date.now())
+  const [logoFile, setLogoFile] = useState<File | null>(null)
+  const [logoPreview, setLogoPreview] = useState<string | null>(null)
+  const [savingLogo, setSavingLogo] = useState(false)
+  const logoRef = useRef<HTMLInputElement>(null)
+
   useEffect(() => {
     fetch("/api/empresa/perfil")
       .then(r => r.json())
       .then((j: ApiResponse<EmpresaData>) => {
-        if (j.data) { setData(j.data); setForm({ ...j.data }) }
+        if (j.data) {
+          setData(j.data)
+          setForm({
+            razonSocial: j.data.razonSocial,
+            giro: j.data.giro,
+            telefono: j.data.telefono,
+            emailContacto: j.data.emailContacto,
+            web: j.data.web,
+            direccion: j.data.direccion,
+            ciudad: j.data.ciudad,
+          })
+          if (j.data.logoUrl) setHasLogo(true)
+        }
       })
       .finally(() => setLoading(false))
   }, [])
@@ -96,6 +120,52 @@ export default function EmpresaPerfilPage() {
     }
   }
 
+  function handleLogoSelect(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    if (logoRef.current) logoRef.current.value = ""
+    setLogoFile(file)
+    setLogoPreview(URL.createObjectURL(file))
+  }
+
+  async function saveLogo() {
+    if (!logoFile) return
+    setSavingLogo(true)
+    try {
+      const fd = new FormData()
+      fd.append("file", logoFile)
+      const res = await fetch("/api/empresa/logo", { method: "POST", body: fd })
+      const json = await res.json()
+      if (!res.ok) {
+        setMsg({ text: json.error ?? "Error al subir logo", ok: false })
+        return
+      }
+      setHasLogo(true)
+      setLogoTimestamp(Date.now())
+      setLogoFile(null)
+      if (logoPreview) { URL.revokeObjectURL(logoPreview); setLogoPreview(null) }
+      setMsg({ text: "Logo actualizado", ok: true })
+      setTimeout(() => setMsg(null), 3000)
+    } finally {
+      setSavingLogo(false)
+    }
+  }
+
+  async function deleteLogo() {
+    setSavingLogo(true)
+    try {
+      const res = await fetch("/api/empresa/logo", { method: "DELETE" })
+      if (!res.ok) { setMsg({ text: "Error al eliminar logo", ok: false }); return }
+      setHasLogo(false)
+      setLogoFile(null)
+      if (logoPreview) { URL.revokeObjectURL(logoPreview); setLogoPreview(null) }
+      setMsg({ text: "Logo eliminado", ok: true })
+      setTimeout(() => setMsg(null), 3000)
+    } finally {
+      setSavingLogo(false)
+    }
+  }
+
   if (loading) return <div className="py-20 text-center text-sm text-sl-muted">Cargando...</div>
   if (!data) return null
 
@@ -114,25 +184,92 @@ export default function EmpresaPerfilPage() {
         <div className="space-y-4">
           {/* Logo */}
           <div>
-            <label className="mb-1.5 block text-xs font-medium text-sl-muted">URL del logotipo</label>
-            <div className="flex items-center gap-3">
-              {form.logoUrl ? (
-                <img
-                  src={form.logoUrl}
-                  alt="Logo"
-                  className="h-12 w-12 shrink-0 rounded-lg border border-sl-border bg-white object-contain p-1"
-                />
-              ) : (
-                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg border border-sl-border/50 bg-sl-bg-dark/40 text-xs text-sl-muted">
-                  Logo
-                </div>
+            <label className="mb-2 flex items-center gap-1.5 text-xs font-medium text-sl-muted">
+              <ImageIcon className="h-3 w-3" /> Logotipo
+              {hasLogo && !logoFile && (
+                <span className="ml-auto flex items-center gap-1 rounded-full bg-sl-success/[0.12] px-2 py-0.5 text-xs text-sl-success">
+                  <CheckCircle className="h-3 w-3" /> Cargado
+                </span>
               )}
-              <input
-                value={form.logoUrl ?? ""}
-                onChange={e => set("logoUrl", e.target.value)}
-                placeholder="https://ejemplo.cl/logo.png"
-                className="flex-1 rounded-lg border border-sl-border bg-sl-bg-card px-3 py-2 text-sm text-sl-text outline-none focus:border-sl-purple placeholder:text-sl-muted"
-              />
+            </label>
+
+            <div className="flex items-start gap-4">
+              {/* Preview */}
+              <div className="flex h-20 w-28 shrink-0 items-center justify-center rounded-lg border border-sl-border bg-sl-bg-dark/40">
+                {logoPreview ? (
+                  <img src={logoPreview} alt="Preview" className="max-h-16 max-w-24 object-contain" />
+                ) : hasLogo ? (
+                  <img
+                    src={`/api/empresa/logo?t=${logoTimestamp}`}
+                    alt="Logo"
+                    className="max-h-16 max-w-24 object-contain"
+                    onError={() => setHasLogo(false)}
+                  />
+                ) : (
+                  <div className="flex flex-col items-center gap-1 text-sl-muted">
+                    <ImageIcon className="h-6 w-6 opacity-30" />
+                    <span className="text-xs">Sin logo</span>
+                  </div>
+                )}
+              </div>
+
+              {/* Controles */}
+              <div className="flex-1 space-y-2">
+                <button
+                  onClick={() => logoRef.current?.click()}
+                  className={cn(
+                    "flex w-full items-center gap-2 rounded-lg border px-3 py-2.5 text-sm transition-colors",
+                    logoFile
+                      ? "border-sl-purple/50 bg-sl-purple/[0.06] text-sl-purple-light"
+                      : "border-dashed border-sl-border text-sl-muted hover:border-sl-border/80 hover:text-sl-text"
+                  )}
+                >
+                  <Upload className="h-4 w-4 shrink-0" />
+                  {logoFile ? logoFile.name : hasLogo ? "Reemplazar imagen" : "Seleccionar imagen"}
+                </button>
+                <input
+                  ref={logoRef}
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp,image/svg+xml"
+                  className="hidden"
+                  onChange={handleLogoSelect}
+                />
+                <p className="text-xs text-sl-muted">JPG, PNG, WEBP o SVG · Máx. 2 MB · Aparece en PDFs de DTE</p>
+
+                <div className="flex items-center gap-2">
+                  {logoFile && (
+                    <>
+                      <button
+                        onClick={saveLogo}
+                        disabled={savingLogo}
+                        className="flex items-center gap-1.5 rounded-lg bg-sl-purple px-3 py-1.5 text-xs font-medium text-white hover:bg-sl-purple-dark disabled:opacity-50"
+                      >
+                        {savingLogo ? <Loader2 className="h-3 w-3 animate-spin" /> : <Upload className="h-3 w-3" />}
+                        Guardar logo
+                      </button>
+                      <button
+                        onClick={() => {
+                          setLogoFile(null)
+                          if (logoPreview) { URL.revokeObjectURL(logoPreview); setLogoPreview(null) }
+                        }}
+                        className="text-xs text-sl-muted hover:text-sl-text"
+                      >
+                        Cancelar
+                      </button>
+                    </>
+                  )}
+                  {hasLogo && !logoFile && (
+                    <button
+                      onClick={deleteLogo}
+                      disabled={savingLogo}
+                      className="flex items-center gap-1.5 rounded-lg border border-sl-danger/40 px-3 py-1.5 text-xs text-sl-danger hover:bg-sl-danger/[0.08] disabled:opacity-50"
+                    >
+                      {savingLogo ? <Loader2 className="h-3 w-3 animate-spin" /> : <Trash2 className="h-3 w-3" />}
+                      Eliminar logo
+                    </button>
+                  )}
+                </div>
+              </div>
             </div>
           </div>
 
@@ -180,7 +317,13 @@ export default function EmpresaPerfilPage() {
       {/* Guardar */}
       <div className="flex items-center justify-end gap-4">
         {msg && (
-          <span className={`text-sm font-medium ${msg.ok ? "text-sl-success" : "text-sl-danger"}`}>
+          <span className={cn(
+            "flex items-center gap-1.5 text-sm font-medium",
+            msg.ok ? "text-sl-success" : "text-sl-danger"
+          )}>
+            {msg.ok
+              ? <CheckCircle className="h-4 w-4 shrink-0" />
+              : <AlertTriangle className="h-4 w-4 shrink-0" />}
             {msg.text}
           </span>
         )}

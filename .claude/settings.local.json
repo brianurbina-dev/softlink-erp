@@ -33,7 +33,13 @@
       "Bash(grep -E \"\\(\\\\.tsx|\\\\.ts\\)$|Error:\")",
       "Bash(Get-Content .env)",
       "Bash(Select-String \"DIRECT_URL\")",
-      "Bash(psql *)"
+      "Bash(psql *)",
+      "Bash(Select-Object FullName)",
+      "PowerShell(Get-ChildItem -Path \"C:\\\\Users\\\\Brian\\\\Documents\\\\ProyectosClaude_Kimi2.5\\\\SoftlinkERP\" | Where-Object { $_.PSIsContainer })",
+      "Bash(Start-Process powershell *)",
+      "PowerShell(Start-Process powershell -ArgumentList \"-NoExit\", \"-Command\", \"cd 'C:\\\\Users\\\\Brian\\\\Documents\\\\ProyectosClaude_Kimi2.5\\\\SoftlinkERP'; npm run dev\" -WindowStyle Normal)",
+      "Bash(npm list *)",
+      "Bash(node -e \"const b = require\\('bwip-js'\\); b.toBuffer\\({bcid:'pdf417',text:'test',scale:2,height:10}\\).then\\(buf => console.log\\('OK', buf.length\\)\\).catch\\(e => console.error\\(e.message\\)\\)\")"
     ]
   }
 }

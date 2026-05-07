@@ -4,6 +4,8 @@ import { getEmpresaContext } from "@/lib/db/get-empresa-context"
 import { getDTEService } from "@/services/dte/getDTEService"
 import { ensureFolio, confirmarFolio } from "@/services/dte/cafService"
 import { crearAsientoAutomatico } from "@/services/contabilidad/asientosService"
+import { storeDTE } from "@/services/dte/dteStorageService"
+import { resolveLogoUrl } from "@/services/storage/r2Service"
 import type { ApiResponse } from "@/types"
 import type { DatosFactura } from "@/services/dte/DTEService"
 
@@ -12,6 +14,9 @@ interface FacturaRow {
   tipo: number
   fecha: string
   estado: string
+  neto: number
+  iva: number
+  total: number
   cliente_rut: string
   cliente_razon_social: string
   cliente_giro: string | null
@@ -34,7 +39,7 @@ export async function POST(
   if (!ctx) return NextResponse.json<ApiResponse>({ error: "No autenticado" }, { status: 401 })
 
   const [factura] = await prisma.$queryRawUnsafe<FacturaRow[]>(
-    `SELECT f.id, f.tipo, f.fecha, f.estado,
+    `SELECT f.id, f.tipo, f.fecha, f.estado, f.neto, f.iva, f.total,
             c.rut         AS cliente_rut,
             c.razon_social AS cliente_razon_social,
             c.giro         AS cliente_giro,
@@ -104,26 +109,78 @@ export async function POST(
     return NextResponse.json<ApiResponse>({ error: result.error.message }, { status: 502 })
   }
 
-  const { folio, trackId, pdfUrl } = result.data
+  const { folio, trackId, dteXml } = result.data
 
   await confirmarFolio(ctx.schemaName, factura.tipo)
 
-  const [facturaActualizada] = await prisma.$queryRawUnsafe<{ neto: number; iva: number; total: number }[]>(
-    `UPDATE "${ctx.schemaName}".facturas
-     SET folio = $1, track_id = $2, pdf_url = $3, estado = 'emitida'
-     WHERE id = $4
-     RETURNING neto, iva, total`,
-    folio, trackId, pdfUrl ?? null, params.id
+  await prisma.$queryRawUnsafe(
+    `UPDATE "${ctx.schemaName}".facturas SET folio = $1, track_id = $2, estado = 'emitida' WHERE id = $3`,
+    folio, trackId, params.id
   )
 
   await crearAsientoAutomatico(
     ctx.schemaName,
     "factura_emitida",
-    { neto: facturaActualizada.neto, iva: facturaActualizada.iva, total: facturaActualizada.total },
+    { neto: factura.neto, iva: factura.iva, total: factura.total },
     `Factura N° ${folio}`,
     "factura",
     params.id
   )
+
+  // Store XML + PDF in R2 (fire and update pdf_url if successful)
+  const [empresa, config] = await Promise.all([
+    prisma.empresa.findUnique({ where: { id: ctx.empresaId } }),
+    prisma.dteConfig.findUnique({ where: { empresaId: ctx.empresaId } }),
+  ])
+
+  let pdfUrl: string | null = null
+  if (empresa) {
+    const logoUrl = await resolveLogoUrl(empresa.logoUrl)
+    pdfUrl = await storeDTE({
+      docType: "facturas",
+      docId: params.id,
+      tipo: factura.tipo,
+      folio,
+      fecha: new Date(factura.fecha),
+      trackId,
+      dteXml,
+      empresaRut: empresa.rut,
+      emisor: {
+        rut: empresa.rut,
+        razonSocial: empresa.razonSocial,
+        giro: empresa.giro ?? "Actividades del giro",
+        direccion: empresa.direccion ?? "",
+        ciudad: empresa.ciudad ?? "",
+        telefono: empresa.telefono ?? "",
+        numeroResolucion: config?.numeroResolucion ?? 0,
+        fechaResolucion: config?.fechaResolucion ?? "",
+        logoUrl,
+      },
+      receptor: {
+        rut: factura.cliente_rut,
+        razonSocial: factura.cliente_razon_social,
+        giro: factura.cliente_giro ?? undefined,
+        direccion: factura.cliente_direccion ?? undefined,
+        ciudad: factura.cliente_ciudad ?? undefined,
+      },
+      items: items.map((i) => ({
+        descripcion: i.descripcion,
+        cantidad: i.cantidad,
+        precioUnitario: i.precio_unitario,
+        monto: Math.round(i.cantidad * i.precio_unitario),
+      })),
+      neto: factura.neto,
+      iva: factura.iva,
+      total: factura.total,
+    })
+
+    if (pdfUrl) {
+      await prisma.$queryRawUnsafe(
+        `UPDATE "${ctx.schemaName}".facturas SET pdf_url = $1 WHERE id = $2`,
+        pdfUrl, params.id
+      )
+    }
+  }
 
   return NextResponse.json<ApiResponse>({ data: { folio, trackId, pdfUrl } })
 }

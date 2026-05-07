@@ -5,6 +5,8 @@ import { getDTEService } from "@/services/dte/getDTEService"
 import { ensureFolio, confirmarFolio } from "@/services/dte/cafService"
 import { crearAsientoAutomatico } from "@/services/contabilidad/asientosService"
 import { validarRut } from "@/lib/chile/rut"
+import { storeDTE } from "@/services/dte/dteStorageService"
+import { resolveLogoUrl } from "@/services/storage/r2Service"
 import type { ApiResponse } from "@/types"
 import type { DatosBoleta } from "@/services/dte/DTEService"
 
@@ -12,6 +14,9 @@ interface BoletaRow {
   id: string
   fecha: string
   estado: string
+  neto: number
+  iva: number
+  total: number
   receptor_rut: string | null
   receptor_nombre: string | null
 }
@@ -30,7 +35,7 @@ export async function POST(
   if (!ctx) return NextResponse.json<ApiResponse>({ error: "No autenticado" }, { status: 401 })
 
   const [boleta] = await prisma.$queryRawUnsafe<BoletaRow[]>(
-    `SELECT id, fecha, estado, receptor_rut, receptor_nombre
+    `SELECT id, fecha, estado, neto, iva, total, receptor_rut, receptor_nombre
      FROM "${ctx.schemaName}".boletas WHERE id = $1`,
     params.id
   )
@@ -87,26 +92,74 @@ export async function POST(
     return NextResponse.json<ApiResponse>({ error: result.error.message }, { status: 502 })
   }
 
-  const { folio, trackId, pdfUrl } = result.data
+  const { folio, trackId, dteXml } = result.data
 
   await confirmarFolio(ctx.schemaName, 39)
 
-  const [boletaActualizada] = await prisma.$queryRawUnsafe<{ neto: number; iva: number; total: number }[]>(
-    `UPDATE "${ctx.schemaName}".boletas
-     SET folio = $1, track_id = $2, pdf_url = $3, estado = 'emitida'
-     WHERE id = $4
-     RETURNING neto, iva, total`,
-    folio, trackId, pdfUrl ?? null, params.id
+  await prisma.$queryRawUnsafe(
+    `UPDATE "${ctx.schemaName}".boletas SET folio = $1, track_id = $2, estado = 'emitida' WHERE id = $3`,
+    folio, trackId, params.id
   )
 
   await crearAsientoAutomatico(
     ctx.schemaName,
     "boleta_emitida",
-    { neto: boletaActualizada.neto, iva: boletaActualizada.iva, total: boletaActualizada.total },
+    { neto: boleta.neto, iva: boleta.iva, total: boleta.total },
     `Boleta N° ${folio}`,
     "boleta",
     params.id
   )
+
+  const [empresa, config] = await Promise.all([
+    prisma.empresa.findUnique({ where: { id: ctx.empresaId } }),
+    prisma.dteConfig.findUnique({ where: { empresaId: ctx.empresaId } }),
+  ])
+
+  let pdfUrl: string | null = null
+  if (empresa) {
+    const logoUrl = await resolveLogoUrl(empresa.logoUrl)
+    pdfUrl = await storeDTE({
+      docType: "boletas",
+      docId: params.id,
+      tipo: 39,
+      folio,
+      fecha: new Date(boleta.fecha),
+      trackId,
+      dteXml,
+      empresaRut: empresa.rut,
+      emisor: {
+        rut: empresa.rut,
+        razonSocial: empresa.razonSocial,
+        giro: empresa.giro ?? "Actividades del giro",
+        direccion: empresa.direccion ?? "",
+        ciudad: empresa.ciudad ?? "",
+        telefono: empresa.telefono ?? "",
+        numeroResolucion: config?.numeroResolucion ?? 0,
+        fechaResolucion: config?.fechaResolucion ?? "",
+        logoUrl,
+      },
+      receptor: {
+        rut: rutValido ? boleta.receptor_rut! : "66666666-6",
+        razonSocial: rutValido ? (boleta.receptor_nombre ?? "Consumidor Final") : "Consumidor Final",
+      },
+      items: items.map((i) => ({
+        descripcion: i.descripcion,
+        cantidad: i.cantidad,
+        precioUnitario: i.precio_unitario,
+        monto: Math.round(i.cantidad * i.precio_unitario),
+      })),
+      neto: boleta.neto,
+      iva: boleta.iva,
+      total: boleta.total,
+    })
+
+    if (pdfUrl) {
+      await prisma.$queryRawUnsafe(
+        `UPDATE "${ctx.schemaName}".boletas SET pdf_url = $1 WHERE id = $2`,
+        pdfUrl, params.id
+      )
+    }
+  }
 
   return NextResponse.json<ApiResponse>({ data: { folio, trackId, pdfUrl } })
 }

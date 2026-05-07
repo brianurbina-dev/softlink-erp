@@ -7,7 +7,6 @@ import type { ApiResponse } from "@/types"
 const perfilSchema = z.object({
   razonSocial:   z.string().min(1).max(200),
   giro:          z.string().max(200).optional().nullable(),
-  logoUrl:       z.string().max(500).optional().nullable(),
   telefono:      z.string().max(50).optional().nullable(),
   emailContacto: z.string().max(200).optional().nullable(),
   web:           z.string().max(300).optional().nullable(),
@@ -39,7 +38,6 @@ export async function PUT(req: NextRequest) {
     data: {
       razonSocial:   parsed.data.razonSocial,
       giro:          parsed.data.giro          ?? null,
-      logoUrl:       parsed.data.logoUrl        || null,
       telefono:      parsed.data.telefono       ?? null,
       emailContacto: parsed.data.emailContacto  ?? null,
       web:           parsed.data.web            || null,

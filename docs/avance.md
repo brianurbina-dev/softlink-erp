@@ -17,7 +17,7 @@ Claude Code lo lee para saber qué está hecho y qué viene.
 | Fase 6 — Reportes | 6.1 ✅, 6.2 ✅, 6.3 ✅ | ✅ Completa |
 | Fase 7 — Contabilidad | 7.1 ✅, 7.2 ✅, 7.3 ✅, 7.4 ✅ | ✅ Completa |
 | Fase 8 — Usuarios | 8.1 ✅ | ✅ Completa |
-| Fase 9 — PDF y Comunicaciones | 9.1 ⏳ | Pendiente análisis y desarrollo |
+| Fase 9 — PDF y Comunicaciones | 9.1 🔄 | PDF + R2 implementado — email pendiente |
 
 ---
 
@@ -347,24 +347,63 @@ Zod 4.x cambió `error.errors[0]` por `error.issues[0]`. Afecta todos los `safeP
 
 ---
 
-## Módulos pendientes de desarrollo
+## Módulo 9.1 — Generación de PDF y almacenamiento en R2
+- Estado: 🔄 EN PROGRESO — PDF + R2 implementado, email pendiente
+- Fecha inicio: 06/05/2026
 
-## Módulo 9.1 — Generación de PDF y envío por correo
-- Estado: ⏳ PENDIENTE — requiere análisis previo
-- Descripción: El sistema debe generar el PDF oficial de cada DTE (Representación Impresa del SII) y enviarlo automáticamente por correo a los destinatarios configurados en la empresa.
-- Alcance definido:
-  - Generar PDF con el formato exigido por el SII para cada tipo de DTE (33, 34, 39, 52, 56, 61)
-  - Datos del emisor (logo, razón social, RUT, giro, dirección) tomados de la configuración de empresa
-  - Almacenar el PDF y el XML en un servicio de archivos (a definir en análisis)
-  - Enviar automáticamente el PDF al/los correo(s) configurados en la empresa al momento de emitir
-  - Configuración de correos de envío como parte del perfil de empresa (pendiente de desarrollar)
-- Análisis requerido antes de implementar:
-  - **Tecnología de generación PDF**: evaluar opciones (Puppeteer/headless Chrome, react-pdf, @react-pdf/renderer, pdfkit, jsPDF). Criterio: mantenibilidad, calidad visual, facilidad para respetar el layout SII
-  - **Almacenamiento de logos**: evaluar si usar Cloudflare R2 (ya en el stack), Supabase Storage, o subida directa a la BD como base64. Considerar tamaño, URLs públicas y caducidad
-  - **Almacenamiento de PDFs y XMLs**: Cloudflare R2 ya está en el stack — definir si es suficiente o si conviene Supabase Storage por simplicidad
-  - **Servicio de correo**: evaluar Resend, SendGrid, Nodemailer con SMTP propio. Criterio: plan gratuito suficiente para inicio, buena entregabilidad en Chile
-- Prioridad sugerida: alta — requisito legal y operacional para uso real del sistema en producción
-- Origen: definido por el usuario el 05/05/2026
+### Implementado — sesión 1 (06/05/2026)
+  - `@react-pdf/renderer` instalado para generación de PDF server-side
+  - `@aws-sdk/client-s3` + `@aws-sdk/s3-request-presigner` para Cloudflare R2
+  - `src/lib/r2/client.ts` — cliente S3 singleton para R2
+  - `src/services/storage/r2Service.ts` — `uploadToR2()`, `getSignedDownloadUrl()`, `buildR2Key()`
+  - `src/services/pdf/dtePdfGenerator.tsx` — plantilla PDF para todos los tipos DTE (33, 34, 39, 52, 56, 61)
+  - `src/services/dte/dteStorageService.ts` — orquesta subida XML + generación/subida PDF a R2
+  - `ResultadoDTE` actualizado para devolver `dteXml` (XML paso 1 de SimpleAPI)
+  - `SimpleAPIAdapter.emitir3Pasos()` retorna el XML del paso 1 en el resultado
+  - 4 rutas de emisión actualizadas (facturas, boletas, guías, notas) para llamar a `storeDTE()` y guardar `pdf_url`
+  - 4 rutas nuevas `GET /api/{tipo}/{id}/pdf` → generan URL firmada R2 (1h) y redirigen
+  - XML del DTE firmado por SII se almacena en R2 para cumplir retención legal 6 años
+  - Si R2 no está configurado: el DTE se emite normalmente, solo sin PDF (degradación silenciosa)
+  - R2 key format: `dte/{rut_sin_puntos}/{año}/{mes}/{tipo}_{folio}.{ext}`
+
+### Implementado — sesión 2 (06/05/2026)
+  - **Logo de empresa en PDF**: subida via R2 upload (`POST /api/empresa/logo`), no por URL
+    - Logo se almacena como `logos/{empresaId}.{ext}` en R2
+    - `resolveLogoUrl()` convierte la clave R2 a URL firmada (1h) en tiempo de generación
+    - Página `/dashboard/empresa` tiene UI de upload con preview, las 4 rutas de emisión pasan el logo al PDF
+  - **Header PDF 3 columnas**: logo (izq) | datos empresa (centro) | RUT/tipo/folio en recuadro (der)
+  - **Timbre electrónico (TED)**: barcode PDF417 generado desde el bloque `<TED>` del XML del DTE
+    - `bwip-js` instalado para generar el código de barras (`require()` con typing manual por incompatibilidad ESM)
+    - `src/services/dte/tedBarcode.ts` — extrae TED con regex, genera PNG base64
+    - Aparece en el footer del PDF si está disponible; fallback a texto si no
+  - **Footer anclado al fondo**: `marginTop: "auto"` en `cajaFinal`; monto en palabras incluido en el footer
+  - **Modal visor de PDF** (`src/components/erp/PdfModal.tsx`): componente reutilizable, 95vw × 92vh, iframe con height inline para evitar bug de tamaño en navegadores
+  - **Botón "Ver" + "Descargar"** en filas emitidas de facturas, boletas, notas y guías
+
+### Implementado — sesión 3 (06/05/2026)
+  - **Previsualización de PDF sin emitir al SII**:
+    - `POST /api/facturas/preview` — genera PDF desde datos del formulario sin guardar ni emitir
+    - `GET /api/facturas/[id]/preview` — genera PDF de una factura existente (borrador o emitida)
+    - Botón "Previsualizar PDF" en el formulario de nueva factura y en borradores del listado
+    - Watermark diagonal "SIN VALIDEZ / ANTE EL SII" en rojo (opacity 0.1) en todos los PDFs de preview
+    - Flag `isPreview?: boolean` en `PdfDatosDTE`; watermark posicionado absolutamente centrado con `rotate(-42deg)`
+  - **Modal de detalle read-only para facturas emitidas**:
+    - Click en fila emitida abre modal con: datos generales, ítems en tabla, totales
+    - Acciones dentro del modal: Ver PDF, Descargar, Anular
+    - `stopPropagation` en la columna de acciones para que los botones no disparen el click de fila
+  - **Click en fila borrador navega a editar**:
+    - `GET /api/facturas/[id]` ya devuelve la factura completa con ítems — sin endpoint nuevo
+    - Página `/dashboard/facturacion/facturas/[id]/editar` — formulario idéntico al de nueva, pre-cargado con datos existentes
+    - Acciones: Previsualizar PDF, Guardar borrador (PUT), Emitir DTE (PUT + emitir en secuencia)
+
+- Pendiente para completar 9.1:
+  - Configurar R2 en Cloudflare (crear bucket, obtener credenciales)
+  - Llenar variables de entorno: `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET_NAME`
+  - Envío de email con PDF adjunto (Resend recomendado — plan gratuito 3.000 emails/mes)
+  - Campo `email_envio` en configuración de empresa para destino del correo
+  - **Aplicar patrones UX de facturas a boletas, notas y guías** (ver mejoras-pendientes.md)
+
+## Módulos pendientes de desarrollo
 
 ---
 

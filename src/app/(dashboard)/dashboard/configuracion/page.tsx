@@ -34,7 +34,6 @@ export default function ConfiguracionPage() {
   const [config, setConfig] = useState<ConfigState | null>(null)
   const [loadingConfig, setLoadingConfig] = useState(true)
 
-  // Campos editables
   const [ambiente, setAmbiente] = useState<"certificacion" | "produccion">("certificacion")
   const [rutEmpresa, setRutEmpresa] = useState("")
   const [rutCertificado, setRutCertificado] = useState("")
@@ -121,7 +120,6 @@ export default function ConfiguracionPage() {
       setCertNombre(null)
       setTestStatus("idle")
 
-      // Refrescar estado
       const fresh = await fetch("/api/dte/config").then((r) => r.json())
       if (fresh.data) {
         setConfig(fresh.data)
@@ -171,7 +169,6 @@ export default function ConfiguracionPage() {
 
   return (
     <div className="mx-auto max-w-2xl space-y-6">
-      {/* Header */}
       <div>
         <h1 className="text-page-title text-sl-text">Configuración</h1>
         <p className="mt-0.5 text-sm text-sl-muted">Integración con el SII vía SimpleAPI (ChileSystems)</p>
@@ -322,7 +319,6 @@ export default function ConfiguracionPage() {
           </p>
         </div>
 
-        {/* Test de conexión */}
         <div className="mt-4 flex items-center gap-3">
           <button
             onClick={testConexion}
@@ -378,7 +374,6 @@ export default function ConfiguracionPage() {
         )}
 
         <div className="space-y-3">
-          {/* Upload .p12 */}
           <div>
             <label className="mb-1.5 block text-xs font-medium text-sl-muted">
               {config?.certificadoConfigurado ? "Reemplazar certificado (.p12)" : "Certificado (.p12)"}
@@ -404,7 +399,6 @@ export default function ConfiguracionPage() {
             />
           </div>
 
-          {/* Contraseña del certificado */}
           <div>
             <label className="mb-1.5 block text-xs font-medium text-sl-muted">
               {config?.certificadoConfigurado
@@ -451,7 +445,6 @@ export default function ConfiguracionPage() {
         </button>
       </div>
 
-      {/* Toast */}
       {toast && (
         <div className={cn(
           "fixed bottom-6 right-6 z-50 flex items-center gap-2.5 rounded-xl px-4 py-3 text-sm font-medium shadow-xl",

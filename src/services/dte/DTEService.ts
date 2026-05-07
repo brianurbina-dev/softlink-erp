@@ -71,6 +71,7 @@ export interface ResultadoDTE {
   trackId: string
   pdfUrl?: string
   xmlUrl?: string
+  dteXml?: string
 }
 
 export type EstadoDTE = "pendiente" | "aceptado" | "rechazado" | "anulado"

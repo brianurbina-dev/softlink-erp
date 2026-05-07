@@ -5,6 +5,57 @@ Se revisan al cerrar cada fase para decidir si se incorporan al roadmap.
 
 ---
 
+## [2026-05-06] Aplicar patrones UX de facturas a boletas, notas y guías
+- Módulo relacionado: 2.3 (Boletas), 2.4 (Notas), 2.5 (Guías)
+- Descripción: Todo lo implementado en el módulo de facturas (sesiones 3–4 del módulo 9.1) debe replicarse en los otros tres módulos de facturación. El detalle completo de cada mejora y cómo está implementada en facturas se describe a continuación para facilitar el port.
+- Prioridad sugerida: media
+- Origen: implementado en facturas — pendiente de replicar en los demás módulos
+
+### Detalle técnico — qué hay en facturas y cómo replicarlo
+
+#### 1. Vista previa PDF (borradores)
+- **Cómo funciona en facturas:**
+  - Botón "Previsualizar PDF" en `/facturas/nueva/page.tsx` y en `/facturas/[id]/editar/page.tsx`
+  - También en el listado para borradores (botón en la fila)
+  - Al hacer clic: POST a `/api/facturas/preview` con el payload del formulario → devuelve `application/pdf` → `URL.createObjectURL(blob)` → abre `<PdfModal isPreview>` client-side → `URL.revokeObjectURL()` al cerrar
+  - El PDF incluye marca de agua diagonal "SIN VALIDEZ / ANTE EL SII" (opacity 0.1, rojo, rotación -42°) implementada en `dtePdfGenerator.tsx` con el flag `isPreview: true` en `PdfDatosDTE`
+  - `<PdfModal isPreview>` muestra ícono `ⓘ` en el header que despliega un popover: "Este es un documento de vista previa generado localmente. No tiene ninguna validez ante el SII y no ha sido enviado ni timbrado."
+- **Qué crear para replicar:**
+  - Boletas: `POST /api/boletas/preview` + `GET /api/boletas/[id]/preview`
+  - Guías: `POST /api/guias/preview` + `GET /api/guias/[id]/preview`
+  - Notas: integrar dentro del modal de creación (no tiene página separada)
+  - El generador PDF (`dtePdfGenerator.tsx`) ya soporta `isPreview` — solo hay que pasarlo
+
+#### 2. Click en fila borrador → navegar a editar
+- **Cómo funciona en facturas:**
+  - En el `<tr>` del listado: `onClick={() => router.push(\`/facturas/${f.id}/editar\`)}` con `cursor-pointer`
+  - El `<td>` de acciones tiene `onClick={(e) => e.stopPropagation()}` para evitar conflicto
+  - La página `/facturas/[id]/editar/page.tsx` carga el borrador vía `GET /api/facturas/[id]`, pre-rellena el formulario, permite editar y tiene "Guardar" (`PUT /api/facturas/[id]`) + "Previsualizar PDF" + "Emitir"
+- **Qué crear para replicar:**
+  - Boletas: `/dashboard/facturacion/boletas/[id]/editar` + `PUT /api/boletas/[id]`
+  - Guías: `/dashboard/facturacion/guias/[id]/editar` + `PUT /api/guias/[id]`
+  - Notas: abrir el modal de creación pre-cargado con los datos del borrador (sin página separada)
+
+#### 3. Click en fila emitida → modal de detalle
+- **Cómo funciona en facturas:**
+  - `onClick` en `<tr>` de emitidas llama a `handleVerDetalle(id)` → `GET /api/facturas/[id]` → setDetalle(data)
+  - Modal con: header (tipo + folio + badge de estado + botón X), body scrolleable (datos generales + tabla de ítems + totales), footer con acciones
+  - **Footer de acciones:** Ver PDF (abre `<PdfModal>`), Descargar PDF (`<a target="_blank">`), Ver XML (abre `<XmlViewerModal>`), Anular (solo si emitida)
+  - `GET /api/facturas/[id]` devuelve: todos los campos de la factura + `cliente_razon_social`, `cliente_rut`, `cliente_giro`, `cliente_direccion` (JOIN con clientes) + `items[]` con `descripcion`, `cantidad`, `precio_unitario`, `subtotal`
+- **Qué crear para replicar:**
+  - Endpoints: `GET /api/boletas/[id]`, `GET /api/guias/[id]`, `GET /api/notas/[id]` — verificar si ya existen y si incluyen ítems
+  - El modal es JSX inline en la página (no componente separado) — copiar la estructura del modal de facturas adaptando campos y acciones según el tipo de documento
+
+#### 4. Visor XML con resaltado de sintaxis
+- **Cómo funciona en facturas:**
+  - Botón `<FileCode2>` en la fila de emitidas y en el footer del modal de detalle → abre `<XmlViewerModal>`
+  - `XmlViewerModal` recibe `xmlUrl` y `downloadUrl` → `fetch(xmlUrl)` → pretty-print + syntax highlight con regex → `dangerouslySetInnerHTML` en `<pre>`
+  - Endpoint `GET /api/facturas/[id]/xml` → busca en R2 con `buildR2Key(rut, tipo, folio, fecha, "xml")` → `downloadFromR2(key)` → devuelve `text/xml`. Con `?download=1` agrega `Content-Disposition: attachment`
+  - El modal tiene un botón `?` que muestra: "Archivo XML correspondiente al Documento Tributario Electrónico (DTE), utilizado para validación, envío y respaldo ante el SII."
+- **Qué crear para replicar:**
+  - Endpoints: `GET /api/boletas/[id]/xml`, `GET /api/guias/[id]/xml`, `GET /api/notas/[id]/xml` — misma lógica que facturas, solo cambia la tabla de origen
+  - `XmlViewerModal` ya existe y es reutilizable — no necesita modificación
+
 ## [2026-05-05] Anulación de boleta via nota de crédito
 - Módulo relacionado: 2.3 (Boletas electrónicas)
 - Descripción: En Chile las boletas no se anulan directamente con el SII — el mecanismo legal es emitir una nota de crédito de boleta (tipo 61) por el monto completo. El botón "Anular" en el listado de boletas debe generar automáticamente esa NC, igual que el flujo de anulación de facturas, pero referenciando una boleta (tipo 39) en lugar de una factura.
@@ -37,7 +88,7 @@ Se revisan al cerrar cada fase para decidir si se incorporan al roadmap.
 
 ---
 
-## [2026-05-01] PDF de DTE conforme al SII
+## ✅ [2026-05-01] PDF de DTE conforme al SII — IMPLEMENTADO 06/05/2026
 - Módulo relacionado: 2.2, 2.3, 2.4, 2.5 (todos los tipos de DTE emitidos)
 - Descripción: Al emitir un DTE correctamente en el SII, el sistema debe generar y almacenar el PDF oficial en el formato exigido por el SII (Representación Impresa del DTE). Actualmente SimpleAPI devuelve una URL de PDF en la respuesta (`pdfUrl`), pero no se descarga ni se almacena en ningún lado. El flujo completo debe:
   1. Recibir `pdfUrl` (y `xmlUrl`) desde SimpleAPI tras la emisión exitosa

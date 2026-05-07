@@ -4,6 +4,8 @@ import { getEmpresaContext } from "@/lib/db/get-empresa-context"
 import { getDTEService } from "@/services/dte/getDTEService"
 import { ensureFolio, confirmarFolio } from "@/services/dte/cafService"
 import { crearAsientoAutomatico } from "@/services/contabilidad/asientosService"
+import { storeDTE } from "@/services/dte/dteStorageService"
+import { resolveLogoUrl } from "@/services/storage/r2Service"
 import type { ApiResponse } from "@/types"
 import type { DatosNota } from "@/services/dte/DTEService"
 
@@ -12,6 +14,9 @@ interface NotaRow {
   tipo: number
   fecha: string
   estado: string
+  neto: number
+  iva: number
+  total: number
   referencia_tipo: number
   referencia_folio: number
   referencia_razon: string
@@ -36,7 +41,7 @@ export async function POST(
   if (!ctx) return NextResponse.json<ApiResponse>({ error: "No autenticado" }, { status: 401 })
 
   const [nota] = await prisma.$queryRawUnsafe<NotaRow[]>(
-    `SELECT f.id, f.tipo, f.fecha, f.estado,
+    `SELECT f.id, f.tipo, f.fecha, f.estado, f.neto, f.iva, f.total,
             f.referencia_tipo, f.referencia_folio, f.referencia_razon,
             c.rut          AS cliente_rut,
             c.razon_social AS cliente_razon_social,
@@ -102,16 +107,13 @@ export async function POST(
     return NextResponse.json<ApiResponse>({ error: result.error.message }, { status: 502 })
   }
 
-  const { folio, trackId, pdfUrl } = result.data
+  const { folio, trackId, dteXml } = result.data
 
   await confirmarFolio(ctx.schemaName, nota.tipo)
 
-  const [notaActualizada] = await prisma.$queryRawUnsafe<{ neto: number; iva: number; total: number }[]>(
-    `UPDATE "${ctx.schemaName}".facturas
-     SET folio = $1, track_id = $2, pdf_url = $3, estado = 'emitida'
-     WHERE id = $4
-     RETURNING neto, iva, total`,
-    folio, trackId, pdfUrl ?? null, params.id
+  await prisma.$queryRawUnsafe(
+    `UPDATE "${ctx.schemaName}".facturas SET folio = $1, track_id = $2, estado = 'emitida' WHERE id = $3`,
+    folio, trackId, params.id
   )
 
   const eventoContable = nota.tipo === 61 ? "nota_credito_emitida" : "nota_debito_emitida"
@@ -120,11 +122,68 @@ export async function POST(
   await crearAsientoAutomatico(
     ctx.schemaName,
     eventoContable,
-    { neto: notaActualizada.neto, iva: notaActualizada.iva, total: notaActualizada.total },
+    { neto: nota.neto, iva: nota.iva, total: nota.total },
     descripcionNota,
     "factura",
     params.id
   )
+
+  const [empresa, config] = await Promise.all([
+    prisma.empresa.findUnique({ where: { id: ctx.empresaId } }),
+    prisma.dteConfig.findUnique({ where: { empresaId: ctx.empresaId } }),
+  ])
+
+  let pdfUrl: string | null = null
+  if (empresa) {
+    const logoUrl = await resolveLogoUrl(empresa.logoUrl)
+    pdfUrl = await storeDTE({
+      docType: "notas",
+      docId: params.id,
+      tipo: nota.tipo,
+      folio,
+      fecha: new Date(nota.fecha),
+      trackId,
+      dteXml,
+      empresaRut: empresa.rut,
+      emisor: {
+        rut: empresa.rut,
+        razonSocial: empresa.razonSocial,
+        giro: empresa.giro ?? "Actividades del giro",
+        direccion: empresa.direccion ?? "",
+        ciudad: empresa.ciudad ?? "",
+        telefono: empresa.telefono ?? "",
+        numeroResolucion: config?.numeroResolucion ?? 0,
+        fechaResolucion: config?.fechaResolucion ?? "",
+        logoUrl,
+      },
+      receptor: {
+        rut: nota.cliente_rut,
+        razonSocial: nota.cliente_razon_social,
+        giro: nota.cliente_giro ?? undefined,
+        direccion: nota.cliente_direccion ?? undefined,
+        ciudad: nota.cliente_ciudad ?? undefined,
+      },
+      items: items.map((i) => ({
+        descripcion: i.descripcion,
+        cantidad: i.cantidad,
+        precioUnitario: i.precio_unitario,
+        monto: Math.round(i.cantidad * i.precio_unitario),
+      })),
+      neto: nota.neto,
+      iva: nota.iva,
+      total: nota.total,
+      referenciaFolio: nota.referencia_folio,
+      referenciaTipo: nota.referencia_tipo,
+      referenciaRazon: nota.referencia_razon,
+    })
+
+    if (pdfUrl) {
+      await prisma.$queryRawUnsafe(
+        `UPDATE "${ctx.schemaName}".facturas SET pdf_url = $1 WHERE id = $2`,
+        pdfUrl, params.id
+      )
+    }
+  }
 
   return NextResponse.json<ApiResponse>({ data: { folio, trackId, pdfUrl } })
 }

@@ -12,9 +12,11 @@ import {
   XCircle,
   Download,
   Zap,
+  Eye,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import type { ApiResponse } from "@/types"
+import { PdfModal } from "@/components/erp/PdfModal"
 
 interface BoletaRow {
   id: string
@@ -67,6 +69,7 @@ export default function BoletasPage() {
   const [filtroEstado, setFiltroEstado] = useState("")
   const [emitiendo, setEmitiendo] = useState<string | null>(null)
   const [toast, setToast] = useState<{ msg: string; ok: boolean } | null>(null)
+  const [pdfModal, setPdfModal] = useState<{ url: string; folio: number } | null>(null)
 
   function notify(msg: string, ok: boolean) {
     setToast({ msg, ok })
@@ -280,14 +283,23 @@ export default function BoletasPage() {
                             </>
                           )}
                           {b.estado === "emitida" && b.pdf_url && (
-                            <a
-                              href={b.pdf_url}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="flex items-center gap-1 rounded-md border border-sl-border px-2.5 py-1 text-xs text-sl-muted transition-colors hover:border-sl-purple/50 hover:text-sl-purple-light"
-                            >
-                              <Download className="h-3 w-3" /> PDF
-                            </a>
+                            <>
+                              <button
+                                onClick={() => setPdfModal({ url: b.pdf_url!, folio: b.folio! })}
+                                className="flex items-center gap-1 rounded-md border border-sl-border px-2.5 py-1 text-xs text-sl-muted transition-colors hover:border-sl-purple/50 hover:text-sl-purple-light"
+                              >
+                                <Eye className="h-3 w-3" /> Ver
+                              </button>
+                              <a
+                                href={b.pdf_url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="rounded-md border border-sl-border p-1.5 text-sl-muted transition-colors hover:border-sl-purple/50 hover:text-sl-purple-light"
+                                title="Descargar PDF"
+                              >
+                                <Download className="h-3 w-3" />
+                              </a>
+                            </>
                           )}
                         </div>
                       </td>
@@ -299,6 +311,14 @@ export default function BoletasPage() {
           </div>
         )}
       </div>
+
+      {pdfModal && (
+        <PdfModal
+          url={pdfModal.url}
+          titulo={`Boleta #${pdfModal.folio}`}
+          onClose={() => setPdfModal(null)}
+        />
+      )}
 
       {toast && (
         <div

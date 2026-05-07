@@ -11,7 +11,9 @@ import {
   Zap,
   X,
   Trash2,
+  Eye,
 } from "lucide-react"
+import { PdfModal } from "@/components/erp/PdfModal"
 import { cn } from "@/lib/utils"
 import { calcularIva } from "@/lib/chile/impuestos"
 import type { ApiResponse } from "@/types"
@@ -108,6 +110,7 @@ export default function NotasPage() {
   const [loading, setLoading] = useState(true)
   const [emitiendo, setEmitiendo] = useState<string | null>(null)
   const [toast, setToast] = useState<{ msg: string; ok: boolean } | null>(null)
+  const [pdfModal, setPdfModal] = useState<{ url: string; folio: number } | null>(null)
 
   // Modal state
   const [showModal, setShowModal] = useState(false)
@@ -364,14 +367,23 @@ export default function NotasPage() {
                             </button>
                           )}
                           {n.estado === "emitida" && n.pdf_url && (
-                            <a
-                              href={n.pdf_url}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="flex items-center gap-1 rounded-md border border-sl-border px-2.5 py-1 text-xs text-sl-muted transition-colors hover:border-sl-purple/50 hover:text-sl-purple-light"
-                            >
-                              <Download className="h-3 w-3" /> PDF
-                            </a>
+                            <>
+                              <button
+                                onClick={() => setPdfModal({ url: n.pdf_url!, folio: n.folio! })}
+                                className="flex items-center gap-1 rounded-md border border-sl-border px-2.5 py-1 text-xs text-sl-muted transition-colors hover:border-sl-purple/50 hover:text-sl-purple-light"
+                              >
+                                <Eye className="h-3 w-3" /> Ver
+                              </button>
+                              <a
+                                href={n.pdf_url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="rounded-md border border-sl-border p-1.5 text-sl-muted transition-colors hover:border-sl-purple/50 hover:text-sl-purple-light"
+                                title="Descargar PDF"
+                              >
+                                <Download className="h-3 w-3" />
+                              </a>
+                            </>
                           )}
                         </div>
                       </td>
@@ -525,6 +537,14 @@ export default function NotasPage() {
             </div>
           </div>
         </div>
+      )}
+
+      {pdfModal && (
+        <PdfModal
+          url={pdfModal.url}
+          titulo={`Nota #${pdfModal.folio}`}
+          onClose={() => setPdfModal(null)}
+        />
       )}
 
       {toast && (

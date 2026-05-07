@@ -303,7 +303,7 @@ export class SimpleAPIAdapter implements DTEService {
     }
 
     dteLog("ÉXITO emitir3Pasos", { folio, trackId: paso3.data })
-    return { ok: true, data: { folio, trackId: paso3.data } }
+    return { ok: true, data: { folio, trackId: paso3.data, dteXml: paso1.data } }
   }
 
   // ─── Métodos públicos ──────────────────────────────────────────────────────
