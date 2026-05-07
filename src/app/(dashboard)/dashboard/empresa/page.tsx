@@ -197,8 +197,10 @@ export default function EmpresaPerfilPage() {
               {/* Preview */}
               <div className="flex h-20 w-28 shrink-0 items-center justify-center rounded-lg border border-sl-border bg-sl-bg-dark/40">
                 {logoPreview ? (
+                  // eslint-disable-next-line @next/next/no-img-element
                   <img src={logoPreview} alt="Preview" className="max-h-16 max-w-24 object-contain" />
                 ) : hasLogo ? (
+                  // eslint-disable-next-line @next/next/no-img-element
                   <img
                     src={`/api/empresa/logo?t=${logoTimestamp}`}
                     alt="Logo"
