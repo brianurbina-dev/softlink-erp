@@ -391,7 +391,7 @@ function DTEDocument({ d }: { d: PdfDatosDTE }) {
           {/* Izquierda: logo (solo si existe) */}
           {d.emisor.logoUrl ? (
             <View style={S.headerLogo}>
-              <Image src={d.emisor.logoUrl} style={S.logoImg} />
+              <Image src={d.emisor.logoUrl} style={S.logoImg} alt="" />
             </View>
           ) : null}
 
@@ -514,7 +514,7 @@ function DTEDocument({ d }: { d: PdfDatosDTE }) {
             <View style={S.timbreArea}>
               <Text style={S.timbreTitulo}>Timbre Electronico SII</Text>
               {d.tedBarcode ? (
-                <Image src={d.tedBarcode} style={S.timbreBarcode} />
+                <Image src={d.tedBarcode} style={S.timbreBarcode} alt="" />
               ) : (
                 <>
                   <View style={S.timbreRow}>

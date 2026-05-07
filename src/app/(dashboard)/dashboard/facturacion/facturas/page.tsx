@@ -103,7 +103,7 @@ export default function FacturasPage() {
   const [previewing, setPreviewing] = useState<string | null>(null)
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
   const [detalle, setDetalle] = useState<FacturaDetalle | null>(null)
-  const [loadingDetalle, setLoadingDetalle] = useState(false)
+
   const [xmlModal, setXmlModal] = useState<{ id: string; folio: number } | null>(null)
   const [toast, setToast] = useState<{ msg: string; ok: boolean } | null>(null)
 
@@ -146,15 +146,10 @@ export default function FacturasPage() {
   }
 
   async function handleVerDetalle(id: string) {
-    setLoadingDetalle(true)
-    try {
-      const res = await fetch(`/api/facturas/${id}`)
-      const json = await res.json()
-      if (!res.ok) return notify(json.error ?? "Error al cargar detalle", false)
-      setDetalle(json.data as FacturaDetalle)
-    } finally {
-      setLoadingDetalle(false)
-    }
+    const res = await fetch(`/api/facturas/${id}`)
+    const json = await res.json()
+    if (!res.ok) return notify(json.error ?? "Error al cargar detalle", false)
+    setDetalle(json.data as FacturaDetalle)
   }
 
   async function handleEmitir(id: string) {
