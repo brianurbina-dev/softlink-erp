@@ -20,6 +20,7 @@ interface GuiaRow {
   cliente_razon_social: string | null
   cliente_giro: string | null
   cliente_direccion: string | null
+  cliente_email: string | null
   cliente_ciudad: string | null
   direccion_destino: string | null
   transportista_rut: string | null
@@ -50,7 +51,8 @@ export async function POST(
             c.razon_social AS cliente_razon_social,
             c.giro         AS cliente_giro,
             c.direccion    AS cliente_direccion,
-            c.ciudad       AS cliente_ciudad
+            c.ciudad       AS cliente_ciudad,
+            c.email        AS cliente_email
      FROM "${ctx.schemaName}".guias g
      LEFT JOIN "${ctx.schemaName}".clientes c ON c.id = g.cliente_id
      WHERE g.id = $1`,

@@ -396,18 +396,47 @@ Zod 4.x cambió `error.errors[0]` por `error.issues[0]`. Afecta todos los `safeP
     - Página `/dashboard/facturacion/facturas/[id]/editar` — formulario idéntico al de nueva, pre-cargado con datos existentes
     - Acciones: Previsualizar PDF, Guardar borrador (PUT), Emitir DTE (PUT + emitir en secuencia)
 
+### Implementado — sesión 4 (07/05/2026)
+  - **Patrones UX de facturas portados a boletas, notas y guías** (ver mejoras-pendientes.md — marcado ✅):
+    - `GET /api/boletas/[id]/xml` y `GET /api/guias/[id]/xml` — XML desde R2 con soporte `?download=1`
+    - `GET /api/boletas/[id]/preview` y `GET /api/guias/[id]/preview` — PDF con marca de agua "SIN VALIDEZ"
+    - `PUT /api/boletas/[id]` y `PUT /api/guias/[id]` — actualización de borradores (recalcula ítems y totales)
+    - `/dashboard/facturacion/boletas/[id]/editar` — página de edición de boleta borrador (layout POS)
+    - `/dashboard/facturacion/guias/[id]/editar` — página de edición de guía borrador (mismo layout que nueva)
+    - Listado de boletas: click borrador → editar, click emitida → modal detalle, botones XML y previsualizar
+    - Listado de guías: click borrador → editar, click emitida/facturada → modal detalle, botones XML y previsualizar
+    - Listado de notas: click emitida → modal detalle, botón XML (reutiliza `/api/facturas/[id]/xml`)
+    - `XmlViewerModal` ya existía — reutilizado en los tres módulos sin modificación
+
+### Implementado — sesión 5 (07/05/2026) — Email + seguimiento
+  - `resend` instalado como cliente de email transaccional
+  - `src/services/email/resendClient.ts` — singleton Resend (requiere `RESEND_API_KEY`)
+  - `src/services/email/dteEmailTemplate.ts` — template HTML profesional con branding Softlink ERP, tabla de ítems, totales, CTA y footer legal
+  - `src/services/email/emailService.ts` — `sendDteEmail()`: adjunta PDF desde R2, envía via Resend, loggea resultado en `email_logs`
+  - `downloadBinaryFromR2()` agregado a r2Service para descargar PDF como Buffer
+  - Migration `20260507100000_add_email_logs` — tabla `email_logs` en cada schema de empresa
+  - Los 4 routes de emisión hookean el envío de email de forma no bloqueante (fire & forget)
+  - `GET /api/email/logs` — historial paginado con stats (total/enviados/fallidos/sin_email/hoy)
+  - `POST /api/email/reenviar` — reenvía email de cualquier DTE emitido (facturas/boletas/guías/notas)
+  - `GET /api/{tipo}` de los 4 módulos incluye `email_estado` y `email_destinatario` via LATERAL JOIN
+  - Badge de email en los 4 listados: ✉✓ verde (enviado), ✉✗ rojo (fallido), ✉⚠ gris (sin email)
+  - Página `/dashboard/facturacion/emails` — seguimiento completo: KPI cards, filtros, tabla con reenvío
+  - Sidebar: "Correos DTE" agregado bajo Facturación
+
+- **Email deshabilitado por decisión del usuario (07/05/2026)** — todo el código está implementado pero desconectado:
+  - Servicios: `src/services/email/` (resendClient, dteEmailTemplate, emailService) — listos para usar
+  - API: `src/app/api/email/logs/` y `/email/reenviar/` — implementados pero sin hookear
+  - Página: `src/app/(dashboard)/dashboard/facturacion/emails/page.tsx` — implementada, sin link en sidebar
+  - Migration: `docs/migrations/20260507100000_add_email_logs.sql` — lista para aplicar en Supabase
+  - Para activar: agregar `RESEND_API_KEY`, `RESEND_FROM_EMAIL`, aplicar migration, re-hookear los 4 routes de emisión y agregar link en sidebar
+
 - Pendiente para completar 9.1:
   - Configurar R2 en Cloudflare (crear bucket, obtener credenciales)
   - Llenar variables de entorno: `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET_NAME`
-  - Envío de email con PDF adjunto (Resend recomendado — plan gratuito 3.000 emails/mes)
-  - Campo `email_envio` en configuración de empresa para destino del correo
-  - **Aplicar patrones UX de facturas a boletas, notas y guías** (ver mejoras-pendientes.md)
 
 ## Módulos pendientes de desarrollo
 
 ---
 
-### 30/04/2026 — Deploy Vercel diferido
-Se decidió no deployar en Vercel durante el Módulo 1.1.
-El deploy se hará cuando haya una versión estable con autenticación funcionando.
-Vercel se conecta a GitHub en 5 minutos cuando sea necesario.
+### 07/05/2026 — Deploy Vercel completado
+Vercel conectado al repositorio GitHub. App deployada y funcionando en producción.

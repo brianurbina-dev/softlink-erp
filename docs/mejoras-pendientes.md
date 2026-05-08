@@ -5,7 +5,7 @@ Se revisan al cerrar cada fase para decidir si se incorporan al roadmap.
 
 ---
 
-## [2026-05-06] Aplicar patrones UX de facturas a boletas, notas y guías
+## ✅ [2026-05-06] Aplicar patrones UX de facturas a boletas, notas y guías — IMPLEMENTADO 07/05/2026
 - Módulo relacionado: 2.3 (Boletas), 2.4 (Notas), 2.5 (Guías)
 - Descripción: Todo lo implementado en el módulo de facturas (sesiones 3–4 del módulo 9.1) debe replicarse en los otros tres módulos de facturación. El detalle completo de cada mejora y cómo está implementada en facturas se describe a continuación para facilitar el port.
 - Prioridad sugerida: media

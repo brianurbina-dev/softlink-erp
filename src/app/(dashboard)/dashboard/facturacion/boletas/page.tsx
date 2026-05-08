@@ -13,10 +13,14 @@ import {
   Download,
   Zap,
   Eye,
+  FileCode2,
+  X,
 } from "lucide-react"
+import { useRouter } from "next/navigation"
 import { cn } from "@/lib/utils"
 import type { ApiResponse } from "@/types"
 import { PdfModal } from "@/components/erp/PdfModal"
+import { XmlViewerModal } from "@/components/erp/XmlViewerModal"
 
 interface BoletaRow {
   id: string
@@ -31,6 +35,18 @@ interface BoletaRow {
   track_id: string | null
   pdf_url: string | null
   creado_en: string
+  email_estado: string | null
+  email_destinatario: string | null
+}
+
+interface BoletaDetalle extends BoletaRow {
+  items: {
+    id: string
+    descripcion: string
+    cantidad: number
+    precio_unitario: number
+    subtotal: number
+  }[]
 }
 
 const ESTADO_CONFIG: Record<string, { label: string; color: string; icon: React.ReactNode }> = {
@@ -62,14 +78,19 @@ function fmtFecha(s: string): string {
 }
 
 export default function BoletasPage() {
+  const router = useRouter()
   const [boletas, setBoletas] = useState<BoletaRow[]>([])
   const [loading, setLoading] = useState(true)
   const [searchInput, setSearchInput] = useState("")
   const [search, setSearch] = useState("")
   const [filtroEstado, setFiltroEstado] = useState("")
   const [emitiendo, setEmitiendo] = useState<string | null>(null)
-  const [toast, setToast] = useState<{ msg: string; ok: boolean } | null>(null)
+  const [previewing, setPreviewing] = useState<string | null>(null)
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null)
+  const [detalle, setDetalle] = useState<BoletaDetalle | null>(null)
   const [pdfModal, setPdfModal] = useState<{ url: string; folio: number } | null>(null)
+  const [xmlModal, setXmlModal] = useState<{ id: string; folio: number } | null>(null)
+  const [toast, setToast] = useState<{ msg: string; ok: boolean } | null>(null)
 
   function notify(msg: string, ok: boolean) {
     setToast({ msg, ok })
@@ -93,6 +114,26 @@ export default function BoletasPage() {
     const t = setTimeout(() => setSearch(searchInput), 350)
     return () => clearTimeout(t)
   }, [searchInput])
+
+  async function handlePrevisualizar(id: string) {
+    setPreviewing(id)
+    try {
+      const res = await fetch(`/api/boletas/${id}/preview`)
+      if (!res.ok) return notify("Error al generar vista previa", false)
+      const blob = await res.blob()
+      if (previewUrl) URL.revokeObjectURL(previewUrl)
+      setPreviewUrl(URL.createObjectURL(blob))
+    } finally {
+      setPreviewing(null)
+    }
+  }
+
+  async function handleVerDetalle(id: string) {
+    const res = await fetch(`/api/boletas/${id}`)
+    const json = await res.json()
+    if (!res.ok) return notify(json.error ?? "Error al cargar detalle", false)
+    setDetalle(json.data as BoletaDetalle)
+  }
 
   async function handleEmitir(id: string) {
     setEmitiendo(id)
@@ -223,7 +264,17 @@ export default function BoletasPage() {
                   return (
                     <tr
                       key={b.id}
-                      className="border-b border-sl-border/40 last:border-0 transition-colors hover:bg-sl-border/10"
+                      onClick={
+                        b.estado === "emitida"
+                          ? () => handleVerDetalle(b.id)
+                          : b.estado === "borrador"
+                          ? () => router.push(`/dashboard/facturacion/boletas/${b.id}/editar`)
+                          : undefined
+                      }
+                      className={cn(
+                        "border-b border-sl-border/40 last:border-0 transition-colors hover:bg-sl-border/10",
+                        (b.estado === "emitida" || b.estado === "borrador") && "cursor-pointer"
+                      )}
                     >
                       <td className="px-4 py-3 font-mono text-sl-text">
                         {b.folio ? `#${b.folio}` : <span className="text-sl-muted">—</span>}
@@ -258,10 +309,22 @@ export default function BoletasPage() {
                           {est.icon} {est.label}
                         </span>
                       </td>
-                      <td className="px-4 py-3">
+                      <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
                         <div className="flex items-center gap-1">
                           {b.estado === "borrador" && (
                             <>
+                              <button
+                                onClick={() => handlePrevisualizar(b.id)}
+                                disabled={previewing === b.id}
+                                className="flex items-center gap-1 rounded-md border border-sl-border px-2.5 py-1 text-xs text-sl-muted transition-colors hover:border-sl-purple/50 hover:text-sl-purple-light disabled:opacity-50"
+                              >
+                                {previewing === b.id ? (
+                                  <Loader2 className="h-3 w-3 animate-spin" />
+                                ) : (
+                                  <Eye className="h-3 w-3" />
+                                )}
+                                Previsualizar
+                              </button>
                               <button
                                 onClick={() => handleEmitir(b.id)}
                                 disabled={emitiendo === b.id}
@@ -282,23 +345,36 @@ export default function BoletasPage() {
                               </button>
                             </>
                           )}
-                          {b.estado === "emitida" && b.pdf_url && (
+                          {b.estado === "emitida" && (
                             <>
-                              <button
-                                onClick={() => setPdfModal({ url: b.pdf_url!, folio: b.folio! })}
-                                className="flex items-center gap-1 rounded-md border border-sl-border px-2.5 py-1 text-xs text-sl-muted transition-colors hover:border-sl-purple/50 hover:text-sl-purple-light"
-                              >
-                                <Eye className="h-3 w-3" /> Ver
-                              </button>
-                              <a
-                                href={b.pdf_url}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="rounded-md border border-sl-border p-1.5 text-sl-muted transition-colors hover:border-sl-purple/50 hover:text-sl-purple-light"
-                                title="Descargar PDF"
-                              >
-                                <Download className="h-3 w-3" />
-                              </a>
+                              {b.pdf_url && (
+                                <>
+                                  <button
+                                    onClick={() => setPdfModal({ url: b.pdf_url!, folio: b.folio! })}
+                                    className="flex items-center gap-1 rounded-md border border-sl-border px-2.5 py-1 text-xs text-sl-muted transition-colors hover:border-sl-purple/50 hover:text-sl-purple-light"
+                                  >
+                                    <Eye className="h-3 w-3" /> Ver
+                                  </button>
+                                  <a
+                                    href={b.pdf_url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="rounded-md border border-sl-border p-1.5 text-sl-muted transition-colors hover:border-sl-purple/50 hover:text-sl-purple-light"
+                                    title="Descargar PDF"
+                                  >
+                                    <Download className="h-3 w-3" />
+                                  </a>
+                                </>
+                              )}
+                              {b.folio && (
+                                <button
+                                  onClick={() => setXmlModal({ id: b.id, folio: b.folio! })}
+                                  className="rounded-md border border-sl-border p-1.5 text-sl-muted transition-colors hover:border-sl-purple/50 hover:text-sl-purple-light"
+                                  title="Ver XML"
+                                >
+                                  <FileCode2 className="h-3 w-3" />
+                                </button>
+                              )}
                             </>
                           )}
                         </div>
@@ -312,12 +388,178 @@ export default function BoletasPage() {
         )}
       </div>
 
+      {/* Modal vista previa PDF */}
+      {previewUrl && (
+        <PdfModal
+          url={previewUrl}
+          titulo="Vista previa de boleta"
+          isPreview
+          onClose={() => {
+            URL.revokeObjectURL(previewUrl)
+            setPreviewUrl(null)
+          }}
+        />
+      )}
+
+      {/* Modal visor XML */}
+      {xmlModal && (
+        <XmlViewerModal
+          xmlUrl={`/api/boletas/${xmlModal.id}/xml`}
+          downloadUrl={`/api/boletas/${xmlModal.id}/xml?download=1`}
+          titulo={`XML — Boleta N° ${xmlModal.folio}`}
+          onClose={() => setXmlModal(null)}
+        />
+      )}
+
+      {/* Modal PDF emitida */}
       {pdfModal && (
         <PdfModal
           url={pdfModal.url}
-          titulo={`Boleta #${pdfModal.folio}`}
+          titulo={`Boleta N° ${pdfModal.folio}`}
           onClose={() => setPdfModal(null)}
         />
+      )}
+
+      {/* Modal detalle boleta emitida */}
+      {detalle && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm"
+          onClick={() => setDetalle(null)}
+        >
+          <div
+            className="flex w-full max-w-2xl flex-col overflow-hidden rounded-xl border border-sl-border bg-sl-bg-card shadow-2xl"
+            style={{ maxHeight: "90vh" }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className="flex shrink-0 items-center justify-between border-b border-sl-border px-5 py-4">
+              <div className="flex items-center gap-3">
+                <span className="text-sm font-semibold text-sl-text">
+                  Boleta{detalle.folio ? ` — Folio #${detalle.folio}` : ""}
+                </span>
+                <span className={cn(
+                  "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium",
+                  (ESTADO_CONFIG[detalle.estado] ?? ESTADO_CONFIG.borrador).color
+                )}>
+                  {(ESTADO_CONFIG[detalle.estado] ?? ESTADO_CONFIG.borrador).icon}
+                  {(ESTADO_CONFIG[detalle.estado] ?? ESTADO_CONFIG.borrador).label}
+                </span>
+              </div>
+              <button
+                onClick={() => setDetalle(null)}
+                className="rounded-lg p-1.5 text-sl-muted transition-colors hover:bg-sl-border/40 hover:text-sl-text"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            <div className="overflow-y-auto p-5 space-y-5">
+              {/* Datos generales */}
+              <div className="grid grid-cols-2 gap-x-8 gap-y-3 text-sm">
+                <div>
+                  <p className="text-xs text-sl-muted">Fecha emisión</p>
+                  <p className="mt-0.5 text-sl-text">{fmtFecha(detalle.fecha)}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-sl-muted">Track ID</p>
+                  <p className="mt-0.5 font-mono text-xs text-sl-text">{detalle.track_id ?? "—"}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-sl-muted">Receptor</p>
+                  {detalle.receptor_nombre ? (
+                    <>
+                      <p className="mt-0.5 text-sl-text">{detalle.receptor_nombre}</p>
+                      <p className="text-xs text-sl-muted">{detalle.receptor_rut}</p>
+                    </>
+                  ) : (
+                    <p className="mt-0.5 text-sl-muted">Consumidor final</p>
+                  )}
+                </div>
+              </div>
+
+              {/* Ítems */}
+              <div>
+                <p className="mb-2 text-xs font-medium text-sl-muted">Ítems</p>
+                <div className="rounded-lg border border-sl-border overflow-hidden">
+                  <table className="w-full text-xs">
+                    <thead>
+                      <tr className="border-b border-sl-border/60 bg-sl-bg-dark/40">
+                        <th className="px-3 py-2 text-left font-medium text-sl-muted">Descripción</th>
+                        <th className="px-3 py-2 text-center font-medium text-sl-muted">Cant.</th>
+                        <th className="px-3 py-2 text-right font-medium text-sl-muted">Precio unit.</th>
+                        <th className="px-3 py-2 text-right font-medium text-sl-muted">Subtotal</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {detalle.items.map((item, i) => (
+                        <tr key={item.id ?? i} className="border-b border-sl-border/30 last:border-0">
+                          <td className="px-3 py-2 text-sl-text">{item.descripcion}</td>
+                          <td className="px-3 py-2 text-center tabular-nums text-sl-text">{item.cantidad}</td>
+                          <td className="px-3 py-2 text-right font-mono tabular-nums text-sl-text">
+                            {fmtMonto(item.precio_unitario)}
+                          </td>
+                          <td className="px-3 py-2 text-right font-mono tabular-nums text-sl-text">
+                            {fmtMonto(item.subtotal)}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              {/* Totales */}
+              <div className="flex justify-end">
+                <div className="space-y-1 text-sm">
+                  <div className="flex justify-between gap-12">
+                    <span className="text-sl-muted">Neto</span>
+                    <span className="font-mono tabular-nums text-sl-text">{fmtMonto(detalle.neto)}</span>
+                  </div>
+                  {detalle.iva > 0 && (
+                    <div className="flex justify-between gap-12">
+                      <span className="text-sl-muted">IVA (19%)</span>
+                      <span className="font-mono tabular-nums text-sl-muted">{fmtMonto(detalle.iva)}</span>
+                    </div>
+                  )}
+                  <div className="flex justify-between gap-12 border-t border-sl-border/60 pt-1 font-semibold">
+                    <span className="text-sl-text">Total</span>
+                    <span className="font-mono tabular-nums text-sl-text">{fmtMonto(detalle.total)}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Footer acciones */}
+            <div className="flex shrink-0 items-center justify-end gap-2 border-t border-sl-border px-5 py-3">
+              {detalle.pdf_url && (
+                <>
+                  <button
+                    onClick={() => { setDetalle(null); setPdfModal({ url: detalle.pdf_url!, folio: detalle.folio! }) }}
+                    className="flex items-center gap-1.5 rounded-lg border border-sl-border px-3 py-1.5 text-xs text-sl-muted transition-colors hover:border-sl-purple/50 hover:text-sl-purple-light"
+                  >
+                    <Eye className="h-3.5 w-3.5" /> Ver PDF
+                  </button>
+                  <a
+                    href={detalle.pdf_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-1.5 rounded-lg border border-sl-border px-3 py-1.5 text-xs text-sl-muted transition-colors hover:border-sl-purple/50 hover:text-sl-purple-light"
+                  >
+                    <Download className="h-3.5 w-3.5" /> Descargar PDF
+                  </a>
+                </>
+              )}
+              {detalle.folio && (
+                <button
+                  onClick={() => { setDetalle(null); setXmlModal({ id: detalle.id, folio: detalle.folio! }) }}
+                  className="flex items-center gap-1.5 rounded-lg border border-sl-border px-3 py-1.5 text-xs text-sl-muted transition-colors hover:border-sl-purple/50 hover:text-sl-purple-light"
+                >
+                  <FileCode2 className="h-3.5 w-3.5" /> Ver XML
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
       )}
 
       {toast && (

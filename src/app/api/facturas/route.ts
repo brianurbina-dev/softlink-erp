@@ -20,6 +20,8 @@ export interface FacturaRow {
   track_id: string | null
   pdf_url: string | null
   creado_en: string
+  email_estado: string | null
+  email_destinatario: string | null
 }
 
 export async function GET(req: NextRequest) {

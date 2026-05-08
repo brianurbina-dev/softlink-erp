@@ -63,6 +63,24 @@ export async function downloadFromR2(key: string): Promise<string | null> {
   }
 }
 
+export async function downloadBinaryFromR2(key: string): Promise<Buffer | null> {
+  const client = getR2Client()
+  const bucket = getR2Bucket()
+  if (!client || !bucket) return null
+  try {
+    const res = await client.send(new GetObjectCommand({ Bucket: bucket, Key: key }))
+    if (!res.Body) return null
+    const chunks: Uint8Array[] = []
+    for await (const chunk of res.Body as AsyncIterable<Uint8Array>) {
+      chunks.push(chunk)
+    }
+    return Buffer.concat(chunks)
+  } catch (err) {
+    console.error("[R2] binary download failed:", key, err)
+    return null
+  }
+}
+
 export function buildLogoKey(empresaId: string, ext: string): string {
   return `logos/${empresaId}.${ext}`
 }

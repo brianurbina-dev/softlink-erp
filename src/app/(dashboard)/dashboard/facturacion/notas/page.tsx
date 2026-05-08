@@ -12,8 +12,10 @@ import {
   X,
   Trash2,
   Eye,
+  FileCode2,
 } from "lucide-react"
 import { PdfModal } from "@/components/erp/PdfModal"
+import { XmlViewerModal } from "@/components/erp/XmlViewerModal"
 import { cn } from "@/lib/utils"
 import { calcularIva } from "@/lib/chile/impuestos"
 import type { ApiResponse } from "@/types"
@@ -34,6 +36,20 @@ interface NotaRow {
   estado: string
   track_id: string | null
   pdf_url: string | null
+  email_estado: string | null
+  email_destinatario: string | null
+}
+
+interface NotaDetalle extends NotaRow {
+  cliente_giro: string | null
+  cliente_direccion: string | null
+  items: {
+    id: string
+    descripcion: string
+    cantidad: number
+    precio_unitario: number
+    subtotal: number
+  }[]
 }
 
 interface FacturaEmitida {
@@ -111,8 +127,10 @@ export default function NotasPage() {
   const [emitiendo, setEmitiendo] = useState<string | null>(null)
   const [toast, setToast] = useState<{ msg: string; ok: boolean } | null>(null)
   const [pdfModal, setPdfModal] = useState<{ url: string; folio: number } | null>(null)
+  const [detalle, setDetalle] = useState<NotaDetalle | null>(null)
+  const [xmlModal, setXmlModal] = useState<{ id: string; folio: number; tipo: number } | null>(null)
 
-  // Modal state
+  // Modal nueva nota
   const [showModal, setShowModal] = useState(false)
   const [tipoNota, setTipoNota] = useState<56 | 61>(61)
   const [facturasEmitidas, setFacturasEmitidas] = useState<FacturaEmitida[]>([])
@@ -139,6 +157,13 @@ export default function NotasPage() {
 
   useEffect(() => { fetchNotas() }, [fetchNotas])
 
+  async function handleVerDetalle(id: string) {
+    const res = await fetch(`/api/facturas/${id}`)
+    const json = await res.json()
+    if (!res.ok) return notify(json.error ?? "Error al cargar detalle", false)
+    setDetalle(json.data as NotaDetalle)
+  }
+
   async function openModal(tipo: 56 | 61) {
     setTipoNota(tipo)
     setRefFacturaId("")
@@ -161,7 +186,6 @@ export default function NotasPage() {
     const ref = facturasEmitidas.find((f) => f.id === id)
     if (ref) setClienteId(ref.cliente_id)
 
-    // Prefill items from reference factura
     const res = await fetch(`/api/facturas/${id}`)
     const json = await res.json() as ApiResponse<{ items: FacturaItem[] }>
     const refItems = json.data?.items ?? []
@@ -313,7 +337,14 @@ export default function NotasPage() {
                 {notas.map((n) => {
                   const est = ESTADO_CONFIG[n.estado] ?? ESTADO_CONFIG.borrador
                   return (
-                    <tr key={n.id} className="border-b border-sl-border/40 last:border-0 transition-colors hover:bg-sl-border/10">
+                    <tr
+                      key={n.id}
+                      onClick={n.estado === "emitida" ? () => handleVerDetalle(n.id) : undefined}
+                      className={cn(
+                        "border-b border-sl-border/40 last:border-0 transition-colors hover:bg-sl-border/10",
+                        n.estado === "emitida" && "cursor-pointer"
+                      )}
+                    >
                       <td className="px-4 py-3 font-mono text-sl-text">
                         {n.folio ? `#${n.folio}` : <span className="text-sl-muted">—</span>}
                       </td>
@@ -334,9 +365,7 @@ export default function NotasPage() {
                       </td>
                       <td className="px-4 py-3 text-xs text-sl-muted">
                         {n.referencia_folio ? (
-                          <span>
-                            Tipo {n.referencia_tipo} / #{n.referencia_folio}
-                          </span>
+                          <span>Tipo {n.referencia_tipo} / #{n.referencia_folio}</span>
                         ) : "—"}
                       </td>
                       <td className="px-4 py-3 text-right font-semibold tabular-nums text-sl-text">
@@ -350,7 +379,7 @@ export default function NotasPage() {
                           {est.icon} {est.label}
                         </span>
                       </td>
-                      <td className="px-4 py-3">
+                      <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
                         <div className="flex items-center gap-1">
                           {n.estado === "borrador" && (
                             <button
@@ -366,23 +395,36 @@ export default function NotasPage() {
                               Emitir
                             </button>
                           )}
-                          {n.estado === "emitida" && n.pdf_url && (
+                          {n.estado === "emitida" && (
                             <>
-                              <button
-                                onClick={() => setPdfModal({ url: n.pdf_url!, folio: n.folio! })}
-                                className="flex items-center gap-1 rounded-md border border-sl-border px-2.5 py-1 text-xs text-sl-muted transition-colors hover:border-sl-purple/50 hover:text-sl-purple-light"
-                              >
-                                <Eye className="h-3 w-3" /> Ver
-                              </button>
-                              <a
-                                href={n.pdf_url}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="rounded-md border border-sl-border p-1.5 text-sl-muted transition-colors hover:border-sl-purple/50 hover:text-sl-purple-light"
-                                title="Descargar PDF"
-                              >
-                                <Download className="h-3 w-3" />
-                              </a>
+                              {n.pdf_url && (
+                                <>
+                                  <button
+                                    onClick={() => setPdfModal({ url: n.pdf_url!, folio: n.folio! })}
+                                    className="flex items-center gap-1 rounded-md border border-sl-border px-2.5 py-1 text-xs text-sl-muted transition-colors hover:border-sl-purple/50 hover:text-sl-purple-light"
+                                  >
+                                    <Eye className="h-3 w-3" /> Ver
+                                  </button>
+                                  <a
+                                    href={n.pdf_url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="rounded-md border border-sl-border p-1.5 text-sl-muted transition-colors hover:border-sl-purple/50 hover:text-sl-purple-light"
+                                    title="Descargar PDF"
+                                  >
+                                    <Download className="h-3 w-3" />
+                                  </a>
+                                </>
+                              )}
+                              {n.folio && (
+                                <button
+                                  onClick={() => setXmlModal({ id: n.id, folio: n.folio!, tipo: n.tipo })}
+                                  className="rounded-md border border-sl-border p-1.5 text-sl-muted transition-colors hover:border-sl-purple/50 hover:text-sl-purple-light"
+                                  title="Ver XML"
+                                >
+                                  <FileCode2 className="h-3 w-3" />
+                                </button>
+                              )}
                             </>
                           )}
                         </div>
@@ -400,11 +442,8 @@ export default function NotasPage() {
       {showModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
           <div className="w-full max-w-2xl rounded-2xl border border-sl-border bg-sl-bg-card shadow-2xl">
-            {/* Modal header */}
             <div className="flex items-center justify-between border-b border-sl-border/60 px-5 py-4">
-              <h2 className="text-sm font-semibold text-sl-text">
-                Nueva {TIPO_LABEL[tipoNota]}
-              </h2>
+              <h2 className="text-sm font-semibold text-sl-text">Nueva {TIPO_LABEL[tipoNota]}</h2>
               <button
                 onClick={() => setShowModal(false)}
                 className="rounded-lg p-1 text-sl-muted transition-colors hover:text-sl-text"
@@ -414,7 +453,6 @@ export default function NotasPage() {
             </div>
 
             <div className="space-y-4 px-5 py-4">
-              {/* Referencia y fecha */}
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="mb-1.5 block text-xs font-medium text-sl-muted">
@@ -444,7 +482,6 @@ export default function NotasPage() {
                 </div>
               </div>
 
-              {/* Razón */}
               <div>
                 <label className="mb-1.5 block text-xs font-medium text-sl-muted">Razón</label>
                 <input
@@ -456,7 +493,6 @@ export default function NotasPage() {
                 />
               </div>
 
-              {/* Items */}
               {items.length > 0 && (
                 <div>
                   <label className="mb-1.5 block text-xs font-medium text-sl-muted">
@@ -488,7 +524,6 @@ export default function NotasPage() {
                 </div>
               )}
 
-              {/* Totals */}
               {items.length > 0 && (
                 <div className="flex justify-end">
                   <div className="space-y-1 text-right">
@@ -511,7 +546,6 @@ export default function NotasPage() {
               )}
             </div>
 
-            {/* Modal footer */}
             <div className="flex items-center justify-end gap-3 border-t border-sl-border/60 px-5 py-4">
               <button
                 onClick={() => setShowModal(false)}
@@ -539,12 +573,163 @@ export default function NotasPage() {
         </div>
       )}
 
+      {/* Modal visor XML — notas usan /api/facturas/[id]/xml */}
+      {xmlModal && (
+        <XmlViewerModal
+          xmlUrl={`/api/facturas/${xmlModal.id}/xml`}
+          downloadUrl={`/api/facturas/${xmlModal.id}/xml?download=1`}
+          titulo={`XML — ${TIPO_LABEL[xmlModal.tipo] ?? "Nota"} N° ${xmlModal.folio}`}
+          onClose={() => setXmlModal(null)}
+        />
+      )}
+
       {pdfModal && (
         <PdfModal
           url={pdfModal.url}
           titulo={`Nota #${pdfModal.folio}`}
           onClose={() => setPdfModal(null)}
         />
+      )}
+
+      {/* Modal detalle nota emitida */}
+      {detalle && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm"
+          onClick={() => setDetalle(null)}
+        >
+          <div
+            className="flex w-full max-w-2xl flex-col overflow-hidden rounded-xl border border-sl-border bg-sl-bg-card shadow-2xl"
+            style={{ maxHeight: "90vh" }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex shrink-0 items-center justify-between border-b border-sl-border px-5 py-4">
+              <div className="flex items-center gap-3">
+                <span className="text-sm font-semibold text-sl-text">
+                  {TIPO_LABEL[detalle.tipo] ?? `Tipo ${detalle.tipo}`}
+                  {detalle.folio ? ` — Folio #${detalle.folio}` : ""}
+                </span>
+                <span className={cn(
+                  "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium",
+                  (ESTADO_CONFIG[detalle.estado] ?? ESTADO_CONFIG.borrador).color
+                )}>
+                  {(ESTADO_CONFIG[detalle.estado] ?? ESTADO_CONFIG.borrador).icon}
+                  {(ESTADO_CONFIG[detalle.estado] ?? ESTADO_CONFIG.borrador).label}
+                </span>
+              </div>
+              <button
+                onClick={() => setDetalle(null)}
+                className="rounded-lg p-1.5 text-sl-muted transition-colors hover:bg-sl-border/40 hover:text-sl-text"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            <div className="overflow-y-auto p-5 space-y-5">
+              <div className="grid grid-cols-2 gap-x-8 gap-y-3 text-sm">
+                <div>
+                  <p className="text-xs text-sl-muted">Fecha emisión</p>
+                  <p className="mt-0.5 text-sl-text">{fmtFecha(detalle.fecha)}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-sl-muted">Track ID</p>
+                  <p className="mt-0.5 font-mono text-xs text-sl-text">{detalle.track_id ?? "—"}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-sl-muted">Cliente</p>
+                  <p className="mt-0.5 text-sl-text">{detalle.cliente_razon_social}</p>
+                  <p className="text-xs text-sl-muted">{detalle.cliente_rut}</p>
+                </div>
+                {detalle.referencia_folio && (
+                  <div>
+                    <p className="text-xs text-sl-muted">Documento referencia</p>
+                    <p className="mt-0.5 text-sl-text">Tipo {detalle.referencia_tipo} / #{detalle.referencia_folio}</p>
+                    {detalle.referencia_razon && (
+                      <p className="text-xs text-sl-muted">{detalle.referencia_razon}</p>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              <div>
+                <p className="mb-2 text-xs font-medium text-sl-muted">Ítems</p>
+                <div className="rounded-lg border border-sl-border overflow-hidden">
+                  <table className="w-full text-xs">
+                    <thead>
+                      <tr className="border-b border-sl-border/60 bg-sl-bg-dark/40">
+                        <th className="px-3 py-2 text-left font-medium text-sl-muted">Descripción</th>
+                        <th className="px-3 py-2 text-center font-medium text-sl-muted">Cant.</th>
+                        <th className="px-3 py-2 text-right font-medium text-sl-muted">Precio unit.</th>
+                        <th className="px-3 py-2 text-right font-medium text-sl-muted">Subtotal</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {detalle.items.map((item, i) => (
+                        <tr key={item.id ?? i} className="border-b border-sl-border/30 last:border-0">
+                          <td className="px-3 py-2 text-sl-text">{item.descripcion}</td>
+                          <td className="px-3 py-2 text-center tabular-nums text-sl-text">{item.cantidad}</td>
+                          <td className="px-3 py-2 text-right font-mono tabular-nums text-sl-text">
+                            {fmtMonto(item.precio_unitario)}
+                          </td>
+                          <td className="px-3 py-2 text-right font-mono tabular-nums text-sl-text">
+                            {fmtMonto(item.subtotal)}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              <div className="flex justify-end">
+                <div className="space-y-1 text-sm">
+                  <div className="flex justify-between gap-12">
+                    <span className="text-sl-muted">Neto</span>
+                    <span className="font-mono tabular-nums text-sl-text">{fmtMonto(detalle.neto)}</span>
+                  </div>
+                  {detalle.iva > 0 && (
+                    <div className="flex justify-between gap-12">
+                      <span className="text-sl-muted">IVA (19%)</span>
+                      <span className="font-mono tabular-nums text-sl-muted">{fmtMonto(detalle.iva)}</span>
+                    </div>
+                  )}
+                  <div className="flex justify-between gap-12 border-t border-sl-border/60 pt-1 font-semibold">
+                    <span className="text-sl-text">Total</span>
+                    <span className="font-mono tabular-nums text-sl-text">{fmtMonto(detalle.total)}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex shrink-0 items-center justify-end gap-2 border-t border-sl-border px-5 py-3">
+              {detalle.pdf_url && (
+                <>
+                  <button
+                    onClick={() => { setDetalle(null); setPdfModal({ url: detalle.pdf_url!, folio: detalle.folio! }) }}
+                    className="flex items-center gap-1.5 rounded-lg border border-sl-border px-3 py-1.5 text-xs text-sl-muted transition-colors hover:border-sl-purple/50 hover:text-sl-purple-light"
+                  >
+                    <Eye className="h-3.5 w-3.5" /> Ver PDF
+                  </button>
+                  <a
+                    href={detalle.pdf_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-1.5 rounded-lg border border-sl-border px-3 py-1.5 text-xs text-sl-muted transition-colors hover:border-sl-purple/50 hover:text-sl-purple-light"
+                  >
+                    <Download className="h-3.5 w-3.5" /> Descargar PDF
+                  </a>
+                </>
+              )}
+              {detalle.folio && (
+                <button
+                  onClick={() => { setDetalle(null); setXmlModal({ id: detalle.id, folio: detalle.folio!, tipo: detalle.tipo }) }}
+                  className="flex items-center gap-1.5 rounded-lg border border-sl-border px-3 py-1.5 text-xs text-sl-muted transition-colors hover:border-sl-purple/50 hover:text-sl-purple-light"
+                >
+                  <FileCode2 className="h-3.5 w-3.5" /> Ver XML
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
       )}
 
       {toast && (

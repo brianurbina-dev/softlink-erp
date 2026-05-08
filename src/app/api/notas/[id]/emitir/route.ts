@@ -22,6 +22,7 @@ interface NotaRow {
   referencia_razon: string
   cliente_rut: string
   cliente_razon_social: string
+  cliente_email: string | null
   cliente_giro: string | null
   cliente_direccion: string | null
   cliente_ciudad: string | null
@@ -45,6 +46,7 @@ export async function POST(
             f.referencia_tipo, f.referencia_folio, f.referencia_razon,
             c.rut          AS cliente_rut,
             c.razon_social AS cliente_razon_social,
+            c.email        AS cliente_email,
             c.giro         AS cliente_giro,
             c.direccion    AS cliente_direccion,
             c.ciudad       AS cliente_ciudad
